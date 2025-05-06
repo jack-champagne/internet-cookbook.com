@@ -66,15 +66,15 @@ const CONFIG = {
         }
     },
     debug: {
-        showConstraintCircles: false,
-        showRotatedLine: false,
-        showFixedPoints: false,
-        showIntersectionPoints: false,
-        showCurrentPointLines: false,
-        showMidpoint: false,
-        showGrabbedPoint: false,
-        showBisectingLine: false,
-        showReflectedPoints: false
+        showConstraintCircles: true,
+        showRotatedLine: true,
+        showFixedPoints: true,
+        showIntersectionPoints: true,
+        showCurrentPointLines: true,
+        showMidpoint: true,
+        showGrabbedPoint: true,
+        showBisectingLine: true,
+        showReflectedPoints: true
     }
 };
 
@@ -481,14 +481,14 @@ const drawing = {
         const topFixedIntersection = utils.findIntersection(
             bisectStart,
             bisectEnd,
-            fixedPoints.top,
+            { x: fixedPoints.top.x - 0.005, y: fixedPoints.top.y },
             verticalLine.top
         );
 
         const botFixedIntersection = utils.findIntersection(
             bisectStart,
             bisectEnd,
-            fixedPoints.bot,
+            { x: fixedPoints.bot.x - 0.005, y: fixedPoints.bot.y },
             verticalLine.bot
         );
 
