@@ -66,15 +66,15 @@ const CONFIG = {
         }
     },
     debug: {
-        showConstraintCircles: true,
-        showRotatedLine: true,
-        showFixedPoints: true,
-        showIntersectionPoints: true,
-        showCurrentPointLines: true,
-        showMidpoint: true,
-        showGrabbedPoint: true,
-        showBisectingLine: true,
-        showReflectedPoints: true
+        showConstraintCircles: false,
+        showRotatedLine: false,
+        showFixedPoints: false,
+        showIntersectionPoints: false,
+        showCurrentPointLines: false,
+        showMidpoint: false,
+        showGrabbedPoint: false,
+        showBisectingLine: false,
+        showReflectedPoints: false
     }
 };
 
@@ -306,16 +306,35 @@ const drawing = {
     },
 
     drawPolygon: (points, fillStyle, isBasePolygon = false) => {
-        if (points.length < 3) return;
+        if (points.length < 3)  { console.log(points, "what the hell!!! immediate returns"); return; };
         
+        let pointsToDraw = [];
+        let mod = false;
+        for (let i = 0; i < points.length - 1; i++) {
+            // if distance between points is less than 3, skip
+            if (utils.distance(points[i], points[i + 1]) < 1) {
+                continue;
+            } else {
+                pointsToDraw.push(points[i]);
+            }
+        }
+        pointsToDraw.push(points[points.length - 1]);
+
+        if (mod) {
+            console.log(pointsToDraw, "modded points");
+            console.log(points, "original points");
+        }
+
+        if (points.length < 3)  { console.log(points, "return on filter!!!"); return; };
+
         ctx.save();
         
         if (isBasePolygon) {
             // For base polygon, use it as a mask for the image
             ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) {
-                ctx.lineTo(points[i].x, points[i].y);
+            ctx.moveTo(pointsToDraw[0].x, pointsToDraw[0].y);
+            for (let i = 1; i < pointsToDraw.length; i++) {
+                ctx.lineTo(pointsToDraw[i].x, pointsToDraw[i].y);
             }
             ctx.closePath();
             
@@ -357,9 +376,9 @@ const drawing = {
             
             // Draw the polygon
             ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) {
-                ctx.lineTo(points[i].x, points[i].y);
+            ctx.moveTo(pointsToDraw[0].x, pointsToDraw[0].y);
+            for (let i = 1; i < pointsToDraw.length; i++) {
+                ctx.lineTo(pointsToDraw[i].x, pointsToDraw[i].y);
             }
             ctx.closePath();
             ctx.fillStyle = fillStyle;
@@ -487,37 +506,21 @@ const drawing = {
         }
 
         // Draw polygons and reflections based on intersection points
-        let botClose = utils.distance(botFixedIntersection, fixedPoints.bot) < 1
-        let topClose = utils.distance(topFixedIntersection, fixedPoints.top) < 1
-
         if (topFixedIntersection) {
             if (verticalIntersection) {
                 // Draw base polygon as image mask
-                // if topFixedIntersection is really close to fixedPoints.top, remove fixedPoints.top
-                if (topClose) {
-                    drawing.drawPolygon([
-                        topFixedIntersection,
-                        verticalIntersection,
-                        verticalLine.bot,
-                        fixedPoints.bot
-                    ], CONFIG.canvas.colors.polygon, true);
-                }
-                else {
-                    drawing.drawPolygon([
-                        fixedPoints.top,
-                        topFixedIntersection,
-                        verticalIntersection,
-                        verticalLine.bot,
-                        fixedPoints.bot
-                    ], CONFIG.canvas.colors.polygon, true);
-                }
-
+                drawing.drawPolygon([
+                    fixedPoints.top,
+                    topFixedIntersection,
+                    verticalIntersection,
+                    verticalLine.bot,
+                    fixedPoints.bot
+                ], CONFIG.canvas.colors.polygon, true);
                 // Draw reflection and reflected polygon
                 const reflectedTop = utils.reflectPoint(verticalLine.top, bisectStart, bisectEnd);
                 if (CONFIG.debug.showReflectedPoints) {
                     drawing.drawPoint(reflectedTop, CONFIG.canvas.colors.reflection);
                 }
-
                 drawing.drawPolygon([
                     topFixedIntersection,
                     verticalIntersection,
@@ -525,29 +528,12 @@ const drawing = {
                 ], CONFIG.canvas.colors.polygonAlt);
             } else if (botFixedIntersection) {
                 // Draw base polygon as image mask
-                // if either topFixedIntersection or botFixedIntersection is really close to fixedPoints.top or fixedPoints.bot, remove the fixedPoints.top or fixedPoints.bot  
-                if (botClose && topClose) {
-                    // draw nothing
-                } else if (topClose) {
-                    drawing.drawPolygon([
-                        topFixedIntersection,
-                        botFixedIntersection,
-                        fixedPoints.bot
-                    ], CONFIG.canvas.colors.polygon, true);
-                } else if (botClose) {
-                    drawing.drawPolygon([
-                        fixedPoints.top,
-                        topFixedIntersection,
-                        botFixedIntersection,
-                    ], CONFIG.canvas.colors.polygon, true);
-                } else {
-                    drawing.drawPolygon([
-                        fixedPoints.top,
-                        topFixedIntersection,
-                        botFixedIntersection,
-                        fixedPoints.bot
-                    ], CONFIG.canvas.colors.polygon, true);
-                }
+                drawing.drawPolygon([
+                    fixedPoints.top,
+                    topFixedIntersection,
+                    botFixedIntersection,
+                    fixedPoints.bot
+                ], CONFIG.canvas.colors.polygon, true);
 
                 // Draw reflections and reflected polygon
                 const reflectedTop = utils.reflectPoint(verticalLine.top, bisectStart, bisectEnd);
@@ -566,24 +552,13 @@ const drawing = {
         } else if (botFixedIntersection) {
             if (verticalIntersection) {
                 // Draw base polygon as image mask
-                // if botFixedIntersection is really close to fixedPoints.bot, remove fixedPoints.bot
-                if (botClose) {
-                    drawing.drawPolygon([
-                        fixedPoints.top,
-                        verticalLine.top,
-                        verticalIntersection,
-                        fixedPoints.bot
-                    ], CONFIG.canvas.colors.polygon, true);
-                }
-                else {
-                    drawing.drawPolygon([
-                        fixedPoints.top,
-                        verticalLine.top,
-                        verticalIntersection,
-                        botFixedIntersection,
-                        fixedPoints.bot
-                    ], CONFIG.canvas.colors.polygon, true);
-                }
+                drawing.drawPolygon([
+                    fixedPoints.top,
+                    verticalLine.top,
+                    verticalIntersection,
+                    botFixedIntersection,
+                    fixedPoints.bot
+                ], CONFIG.canvas.colors.polygon, true);
 
                 // Draw reflection and reflected polygon
                 const reflectedBot = utils.reflectPoint(verticalLine.bot, bisectStart, bisectEnd);
