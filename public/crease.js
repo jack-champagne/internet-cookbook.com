@@ -683,20 +683,24 @@ export class Book {
     const shade = this.opts.shading ? Math.min(1, 2.5 * Math.sin(Math.PI * g.progress)) : 0;
     const leafRect = this.rects[s], otherRect = this.rects[-s];
 
-    // Shadow the lifted flap casts onto the page it uncovers.
-    if (shade && flap.length && this._has(t.under)) {
+    // Shadow the lifted flap casts on the uncovered page *and* the table just
+    // beyond it. Clipping to the page alone stopped the shadow dead at the
+    // page edge, so the edge looked lighter than the shaded paper beside it.
+    if (shade && flap.length) {
       // Fade over a minimum distance: tying it to the flap's depth alone made
       // a small fold's whole uncovered corner sit at full darkness.
       const L = clamp(g.depth, W * 0.15, W * 0.3);
       const gr = ctx.createLinearGradient(mid.x, mid.y, mid.x + n.x * L, mid.y + n.y * L);
       gr.addColorStop(0, `rgba(0,0,0,${0.25 * shade})`);
       gr.addColorStop(1, 'rgba(0,0,0,0)');
+      // On the page: crisp, starting exactly at the crease.
       ctx.save();
       this._path(flap);
       ctx.clip();
       ctx.fillStyle = gr;
       ctx.fillRect(leafRect.x, leafRect.y, W, H);
       ctx.restore();
+      this._tableShadow(g, s, mid, n, L, 0.25 * shade);
     }
 
     // The part of the leaf that stays flat.
@@ -755,6 +759,133 @@ export class Book {
       { x: this.spineX, y: this.top + H },
     ];
     return { c, sinA, over, grow, poly };
+  }
+
+  /**
+   * Table area (page-local polygons) that the lifted flap shades: the bands
+   * outside the page edges whose nearest page point is uncovered. Below the
+   * bottom edge that's only right of where the crease meets it - not the
+   * table beside the part of the page that still lies flat. Each band is cut
+   * by the crease evaluated *on the edge*, which is affine within the band.
+   * `tilt` leans that cut about the crease point by tilt × distance from the
+   * page (positive widens the shadow), used to build the penumbra cone. The
+   * corner patches use the same tilted cut, matching both neighbouring bands
+   * along their shared sides, so there are no hard seams at corners.
+   */
+  _tableReach(g, tilt, F) {
+    const W = this.W, H = this.H;
+    const nx = Math.abs(g.normal.x), ny = Math.abs(g.normal.y);
+    const side = (x, y) => (x - g.mid.x) * g.normal.x + (y - g.mid.y) * g.normal.y;
+    const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    return [
+      clipHalfPlane(box(0, -F, W, 0), (q) => side(q.x, 0) + tilt * -q.y * nx),        // above the top edge
+      clipHalfPlane(box(0, H, W, H + F), (q) => side(q.x, H) + tilt * (q.y - H) * nx), // below the bottom edge
+      clipHalfPlane(box(W, 0, W + F, H), (q) => side(W, q.y) + tilt * (q.x - W) * ny), // beyond the outer edge
+      clipHalfPlane(box(W, -F, W + F, 0), (q) => side(W, 0) + tilt * ((q.x - W) * ny - q.y * nx)),     // outer-top corner
+      clipHalfPlane(box(W, H, W + F, H + F), (q) => side(W, H) + tilt * ((q.x - W) * ny + (q.y - H) * nx)), // outer-bottom corner
+    ].filter((p) => p.length);
+  }
+
+  /** Offscreen canvas the size of the main one, reused across frames. */
+  _scratch(key) {
+    let c = this[key];
+    if (!c) c = this[key] = document.createElement('canvas');
+    if (c.width !== this.canvas.width || c.height !== this.canvas.height) {
+      c.width = this.canvas.width;
+      c.height = this.canvas.height;
+    }
+    return c;
+  }
+
+  /**
+   * Shadow the lifted flap casts on the table just beyond the uncovered page
+   * edges (the page itself is shaded separately, crisply from the crease).
+   *  - Penumbra cone: sharp where the crease meets an edge (the flap touches
+   *    down there), softening with distance as the flap rises. Averaged over
+   *    layers whose cut is tilted about that point (see _tableReach).
+   *  - Falloff with true distance from the page - perpendicular along edges,
+   *    radial round corners - applied as a mask, so the shadow never ends in a
+   *    hard line at the canvas border or a box at a corner.
+   * Masking needs destination-in, hence the offscreen buffers.
+   */
+  _tableShadow(g, side, from, dir, L, alpha) {
+    const ctx = this.ctx, W = this.W, H = this.H;
+    const F = Math.min(14, this.opts.padding * 0.5); // fade distance from the page edge
+    if (alpha <= 0.001 || F < 1) return;
+    const m = ctx.getTransform();
+    const toW = (q) => this._toWorld(q, side);
+    const begin = (key) => {
+      const c = this._scratch(key), x = c.getContext('2d');
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      x.globalCompositeOperation = 'source-over';
+      x.globalAlpha = 1;
+      x.clearRect(0, 0, c.width, c.height);
+      x.setTransform(m);
+      return [c, x];
+    };
+    const fillPoly = (x, poly) => {
+      x.beginPath();
+      poly.map(toW).forEach((q, i) => (i ? x.lineTo(q.x, q.y) : x.moveTo(q.x, q.y)));
+      x.closePath();
+      x.fill();
+    };
+
+    // 1. Penumbra cone, shaded by distance from the crease like the page.
+    const [buf, b] = begin('_shadowBuf');
+    const gr = b.createLinearGradient(from.x, from.y, from.x + dir.x * L, from.y + dir.y * L);
+    gr.addColorStop(0, `rgba(0,0,0,${alpha})`);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    b.fillStyle = gr;
+    // One-sided: the soft edge fades in *inside* the geometric outline and never
+    // spreads beyond it, which would make the page's shadow look bigger.
+    const layers = 16, spread = Math.tan(Math.PI / 12);
+    b.globalAlpha = 1 / layers;
+    for (let i = 0; i < layers; i++) {
+      const tilt = -spread * (i + 0.5) / layers;
+      b.beginPath();
+      for (const poly of this._tableReach(g, tilt, F)) {
+        poly.map(toW).forEach((q, j) => (j ? b.lineTo(q.x, q.y) : b.moveTo(q.x, q.y)));
+        b.closePath();
+      }
+      b.fill();
+    }
+
+    // 2. Distance-from-page mask: 1 at the edge, 0 at F.
+    const [mask, k] = begin('_shadowMask');
+    const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    const falloff = (gg) => {
+      gg.addColorStop(0, '#000');
+      gg.addColorStop(0.35, 'rgba(0,0,0,0.45)');
+      gg.addColorStop(1, 'rgba(0,0,0,0)');
+    };
+    const ramp = (a, z, poly) => {
+      const A = toW(a), Z = toW(z), gg = k.createLinearGradient(A.x, A.y, Z.x, Z.y);
+      falloff(gg);
+      k.fillStyle = gg;
+      fillPoly(k, poly);
+    };
+    const round = (corner, poly) => {
+      const C = toW(corner), gg = k.createRadialGradient(C.x, C.y, 0, C.x, C.y, F);
+      falloff(gg);
+      k.fillStyle = gg;
+      fillPoly(k, poly);
+    };
+    ramp({ x: 0, y: 0 }, { x: 0, y: -F }, box(0, -F, W, 0));
+    ramp({ x: 0, y: H }, { x: 0, y: H + F }, box(0, H, W, H + F));
+    ramp({ x: W, y: 0 }, { x: W + F, y: 0 }, box(W, 0, W + F, H));
+    round({ x: W, y: 0 }, box(W, -F, W + F, 0));
+    round({ x: W, y: H }, box(W, H, W + F, H + F));
+
+    // 3. Apply the mask and composite onto the book.
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.globalAlpha = 1;
+    b.globalCompositeOperation = 'destination-in';
+    b.drawImage(mask, 0, 0);
+    b.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(buf, 0, 0);
+    ctx.restore();
   }
 
   /** Rigid board: rotates about the spine, drawn foreshortened with fake perspective. */
