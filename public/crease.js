@@ -517,7 +517,20 @@ export class Book {
     const now = performance.now();
     this._samples.push({ t: now, x: this.point.x });
     while (this._samples.length > 2 && now - this._samples[0].t > 100) this._samples.shift();
-    this.render();
+    this._renderSoon();
+  }
+
+  /**
+   * Render on the next animation frame, once. Touch input on phones arrives
+   * faster than the display refreshes (~120 Hz), and drawing per event threw
+   * away half the work.
+   */
+  _renderSoon() {
+    if (this._pending) return;
+    this._pending = requestAnimationFrame(() => {
+      this._pending = 0;
+      this.render();
+    });
   }
 
   _onMove(e) {
@@ -606,6 +619,43 @@ export class Book {
     ctx.restore();
   }
 
+  /**
+   * The book's resting drop shadow, cached: it only changes when what lies
+   * flat changes, but a blurred shadow is among the most expensive things
+   * to draw. Cached at device resolution over its own bounding box.
+   */
+  _restingShadow(polys) {
+    if (!polys.length) return;
+    const ctx = this.ctx, m = ctx.getTransform();
+    const key = [m.a, m.b, m.c, m.d, m.e, m.f, this.opts.paperColor,
+      ...polys.flat().map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`)].join('|');
+    let cache = this._restCache;
+    if (!cache || cache.key !== key) {
+      // Device-space bounds of the shapes plus room for the blur and offset.
+      const margin = 48 * this.dpr;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const q of polys.flat()) {
+        const dx = m.a * q.x + m.c * q.y + m.e, dy = m.b * q.x + m.d * q.y + m.f;
+        x0 = Math.min(x0, dx); x1 = Math.max(x1, dx); y0 = Math.min(y0, dy); y1 = Math.max(y1, dy);
+      }
+      x0 = Math.max(0, Math.floor(x0 - margin)); y0 = Math.max(0, Math.floor(y0 - margin));
+      x1 = Math.min(this.canvas.width, Math.ceil(x1 + margin)); y1 = Math.min(this.canvas.height, Math.ceil(y1 + margin));
+      const c = (cache && cache.canvas) || document.createElement('canvas');
+      c.width = Math.max(1, x1 - x0);
+      c.height = Math.max(1, y1 - y0);
+      const g = c.getContext('2d');
+      g.setTransform(m.a, m.b, m.c, m.d, m.e - x0, m.f - y0);
+      const main = this.ctx;
+      this.ctx = g; // draw with the shared helper into the cache
+      try { this._paper(polys); } finally { this.ctx = main; }
+      cache = this._restCache = { key, canvas: c, x: x0, y: y0 };
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(cache.canvas, cache.x, cache.y);
+    ctx.restore();
+  }
+
   /** Gutter shading: paper darkens as it curves into the binding. `span` is the page width as drawn. */
   _gutter(x0, dir, y, h, span = this.W) {
     const ctx = this.ctx, gw = span * 0.07;
@@ -632,6 +682,7 @@ export class Book {
 
   render() {
     if (!this._ready) return;
+    if (this._pending) cancelAnimationFrame(this._pending), (this._pending = 0);
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.width, this.height);
@@ -643,7 +694,7 @@ export class Book {
     if (!t) {
       const v = this._visible();
       const resting = [[v.left, -1], [v.right, 1]].filter(([n]) => n != null);
-      this._paper(resting.map(([, side]) => this._rectPoly(this.rects[side])));
+      this._restingShadow(resting.map(([, side]) => this._rectPoly(this.rects[side])));
       for (const [n, side] of resting) this._drawPage(n, this.rects[side]);
       return;
     }
@@ -666,7 +717,7 @@ export class Book {
       const board = this._boardPoly(t);
       if (!this._has(board.over === t.side ? t.under : t.opposite)) resting.push(board.poly);
     }
-    this._paper(resting);
+    this._restingShadow(resting);
     if (this._has(t.opposite)) this._drawPage(t.opposite, otherRect);
     if (this._has(t.under)) this._drawPage(t.under, leafRect);
     if (t.hard) this._renderHard(t);
@@ -815,12 +866,28 @@ export class Book {
     if (alpha <= 0.001 || F < 1) return;
     const m = ctx.getTransform();
     const toW = (q) => this._toWorld(q, side);
+    // Device-space box around the strips (the untilted cut covers every layer):
+    // all offscreen work is confined to it instead of two full-canvas passes.
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const q of this._tableReach(g, 0, F).flat().map(toW)) {
+      const dx = m.a * q.x + m.c * q.y + m.e, dy = m.b * q.x + m.d * q.y + m.f;
+      x0 = Math.min(x0, dx); x1 = Math.max(x1, dx); y0 = Math.min(y0, dy); y1 = Math.max(y1, dy);
+    }
+    if (x0 === Infinity) return;
+    x0 = Math.max(0, Math.floor(x0) - 2); y0 = Math.max(0, Math.floor(y0) - 2);
+    x1 = Math.min(this.canvas.width, Math.ceil(x1) + 2); y1 = Math.min(this.canvas.height, Math.ceil(y1) + 2);
+    const bw = x1 - x0, bh = y1 - y0;
+    if (bw <= 0 || bh <= 0) return;
     const begin = (key) => {
       const c = this._scratch(key), x = c.getContext('2d');
       x.setTransform(1, 0, 0, 1, 0, 0);
       x.globalCompositeOperation = 'source-over';
       x.globalAlpha = 1;
-      x.clearRect(0, 0, c.width, c.height);
+      x.clearRect(x0, y0, bw, bh);
+      x.save(); // restored after compositing: clips must not accumulate across frames
+      x.beginPath();
+      x.rect(x0, y0, bw, bh);
+      x.clip();
       x.setTransform(m);
       return [c, x];
     };
@@ -882,15 +949,17 @@ export class Book {
     round({ x: W, y: 0 }, box(W, -F, W + F, 0));
     round({ x: W, y: H }, box(W, H, W + F, H + F));
 
-    // 3. Apply the mask and composite onto the book.
+    // 3. Apply the mask and composite onto the book (clipped to the box).
     b.setTransform(1, 0, 0, 1, 0, 0);
     b.globalAlpha = 1;
     b.globalCompositeOperation = 'destination-in';
-    b.drawImage(mask, 0, 0);
+    b.drawImage(mask, x0, y0, bw, bh, x0, y0, bw, bh);
     b.globalCompositeOperation = 'source-over';
+    b.restore();
+    k.restore();
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(buf, 0, 0);
+    ctx.drawImage(buf, x0, y0, bw, bh, x0, y0, bw, bh);
     ctx.restore();
   }
 
