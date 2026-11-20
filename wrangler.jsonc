@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "internet-cookbook",
+  "compatibility_date": "2026-11-20",
+  // Static site only: no Worker script, Cloudflare serves ./public directly.
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "internet-cookbook.com", "custom_domain": true }]
+}

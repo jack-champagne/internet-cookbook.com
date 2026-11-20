@@ -1,0 +1,15 @@
+{
+  "name": "crease",
+  "version": "0.1.0",
+  "description": "Page-turning (flipbook) renderer for <canvas>",
+  "type": "module",
+  "main": "public/crease.js",
+  "exports": "./public/crease.js",
+  "files": [
+    "public/crease.js"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "deploy": "wrangler deploy"
+  }
+}

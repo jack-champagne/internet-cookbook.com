@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>crease.js demo</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; gap: 16px; background: #e9e6df; font: 14px system-ui, sans-serif; }
+    .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    button, select { font: inherit; padding: 4px 10px; }
+  </style>
+</head>
+<body>
+  <canvas id="book"></canvas>
+  <div class="controls">
+    <button id="prev">◀ Prev</button>
+    <span id="status"></span>
+    <button id="next">Next ▶</button>
+    <select id="display">
+      <option value="double">Double page</option>
+      <option value="single">Single page</option>
+    </select>
+    <select id="direction">
+      <option value="ltr">Left to right</option>
+      <option value="rtl">Right to left</option>
+    </select>
+    <label><input type="checkbox" id="debug"> Show construction</label>
+  </div>
+
+  <script type="module">
+    import { Book } from './crease.js';
+
+    const COUNT = 12;
+    const hues = [12, 38, 160, 200, 260, 320];
+
+    // Generated placeholder page: tinted paper, page number, fake text lines.
+    const painted = (n) => (ctx, w, h) => {
+      ctx.fillStyle = `hsl(${hues[n % hues.length]} 45% 94%)`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = `hsl(${hues[n % hues.length]} 35% 35%)`;
+      ctx.font = 'bold 64px Georgia, serif';
+      ctx.fillText(String(n), 36, 96);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      for (let y = 140; y < h - 50; y += 18) {
+        const len = (w - 72) * (0.6 + 0.4 * Math.abs(Math.sin(y * n)));
+        ctx.fillRect(36, y, len, 7);
+      }
+      ctx.font = '13px system-ui';
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillText(`— ${n} —`, w / 2 - 18, h - 22);
+    };
+
+    const cover = (title) => (ctx, w, h) => {
+      ctx.fillStyle = '#2d3b4f';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#c9a54a';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(20, 20, w - 40, h - 40);
+      ctx.fillStyle = '#e8d9a8';
+      ctx.font = 'bold 40px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(title, w / 2, h / 2);
+    };
+
+    const pages = [];
+    for (let n = 1; n <= COUNT; n++) {
+      if (n === 1) pages.push(cover('crease.js'));
+      else if (n === COUNT) pages.push(cover('The End'));
+      else pages.push(painted(n));
+    }
+
+    const status = document.getElementById('status');
+    const book = new Book(document.getElementById('book'), {
+      pages,
+      pageWidth: 400,
+      pageHeight: 518,
+      hard: [1, COUNT],
+      onTurn: () => update(),
+    });
+    const update = () => (status.textContent = `page ${book.page} / ${book.pageCount}`);
+    update();
+
+    document.getElementById('prev').onclick = () => book.prev();
+    document.getElementById('next').onclick = () => book.next();
+    document.getElementById('display').onchange = (e) => (book.set({ display: e.target.value }), update());
+    document.getElementById('direction').onchange = (e) => book.set({ direction: e.target.value });
+    document.getElementById('debug').onchange = (e) => book.set({ debug: e.target.checked });
+    window.book = book;
+  </script>
+</body>
+</html>
