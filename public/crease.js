@@ -768,9 +768,10 @@ export class Book {
    * table beside the part of the page that still lies flat. Each band is cut
    * by the crease evaluated *on the edge*, which is affine within the band.
    * `tilt` leans that cut about the crease point by tilt × distance from the
-   * page (positive widens the shadow), used to build the penumbra cone. The
-   * corner patches use the same tilted cut, matching both neighbouring bands
-   * along their shared sides, so there are no hard seams at corners.
+   * page (negative narrows the shadow near the crease point), used to taper
+   * the shadow into a wedge. The corner patches use the same tilted cut,
+   * matching both neighbouring bands along their shared sides, so there are
+   * no hard seams at corners.
    */
   _tableReach(g, tilt, F) {
     const W = this.W, H = this.H;
@@ -800,9 +801,9 @@ export class Book {
   /**
    * Shadow the lifted flap casts on the table just beyond the uncovered page
    * edges (the page itself is shaded separately, crisply from the crease).
-   *  - Penumbra cone: sharp where the crease meets an edge (the flap touches
-   *    down there), softening with distance as the flap rises. Averaged over
-   *    layers whose cut is tilted about that point (see _tableReach).
+   *  - Taper: zero reach where the crease meets an edge (the flap touches
+   *    down there), growing along the edge as the flap rises - a wedge from
+   *    that point. Averaged over layers whose cut is tilted about it.
    *  - Falloff with true distance from the page - perpendicular along edges,
    *    radial round corners - applied as a mask, so the shadow never ends in a
    *    hard line at the canvas border or a box at a corner.
@@ -836,12 +837,17 @@ export class Book {
     gr.addColorStop(0, `rgba(0,0,0,${alpha})`);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     b.fillStyle = gr;
-    // One-sided: the soft edge fades in *inside* the geometric outline and never
-    // spreads beyond it, which would make the page's shadow look bigger.
-    const layers = 16, spread = Math.tan(Math.PI / 12);
+    // Taper: a layer with tilt -t covers the band only where the shadow's reach
+    // out from the page, u, is at most d / t, with d the distance along the
+    // edge from the crease point. So the shadow is a wedge growing out of the
+    // crease point - the flap touches down there and rises with d - reaching
+    // the full fade width F at d = taper × F. Tilts are bunched near -taper so
+    // the wedge's outer boundary stays fairly sharp; d < 0 (beside the flat
+    // part of the page) is never covered, so the shadow never looks bigger.
+    const layers = 12, taper = 5;
     b.globalAlpha = 1 / layers;
     for (let i = 0; i < layers; i++) {
-      const tilt = -spread * (i + 0.5) / layers;
+      const tilt = -taper * (0.6 + 0.4 * (i + 0.5) / layers);
       b.beginPath();
       for (const poly of this._tableReach(g, tilt, F)) {
         poly.map(toW).forEach((q, j) => (j ? b.lineTo(q.x, q.y) : b.moveTo(q.x, q.y)));
