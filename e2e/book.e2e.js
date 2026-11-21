@@ -52,12 +52,15 @@ test('next() turns the page', async () => {
 test('typeset text: exact word spaces, nothing past the margins or into images', async () => {
   const result = await desktop.page.evaluate(async () => {
     const T = await import('/typeset.js'), { parseRecipe } = await import('/recipe-md.js');
-    const recipe = parseRecipe(await (await fetch('/recipes/shepherds-pie.md')).text());
-    const images = await T.loadImages(recipe);
     const c = document.createElement('canvas').getContext('2d');
     const out = {};
-    for (const name of Object.keys(T.TEMPLATES)) {
-      const tpl = T.TEMPLATES[name], pages = T.typesetRecipe(recipe, tpl, images);
+    // Every recipe the test book contains (interim list until book.yaml).
+    for (const file of ['shepherds-pie', 'hamburg-and-rice']) {
+    const recipe = parseRecipe(await (await fetch(`/recipes/${file}.md`)).text());
+    const images = await T.loadImages(recipe);
+    for (const edition of Object.keys(T.TEMPLATES)) {
+      const name = `${file} / ${edition}`;
+      const tpl = T.TEMPLATES[edition], pages = T.typesetRecipe(recipe, tpl, images);
       const right = tpl.page.width - tpl.page.margin.right;
       const width = (it) => { c.font = it.font.replace(/([\d.]+)px/, (_, n) => `${n * 3}px`); return c.measureText(it.text).width / 3; };
       let pastMargin = 0, intoImage = 0, badSpaces = 0;
@@ -76,6 +79,7 @@ test('typeset text: exact word spaces, nothing past the margins or into images',
         }
       }
       out[name] = { pages: pages.length, pastMargin, intoImage, badSpaces };
+    }
     }
     return out;
   });
