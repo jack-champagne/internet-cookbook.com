@@ -3,90 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>crease.js demo</title>
+  <title>Internet Cookbook</title>
   <style>
-    body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
-           justify-content: center; gap: 16px; background: #e9e6df; font: 14px system-ui, sans-serif; }
-    .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
-    button, select { font: inherit; padding: 4px 10px; }
+    html, body { margin: 0; }
+    body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 14px; background: #e9e6df; font: 14px system-ui, sans-serif; color: #4a453d; padding: 10px 0 18px; box-sizing: border-box; }
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; padding: 0 10px; }
+    button, select { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid #b9ab8f; background: #fdfcf8; color: inherit; }
+    #status { min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
+    #loading { color: #8a7f6c; }
   </style>
 </head>
 <body>
-  <canvas id="book"></canvas>
+  <div id="loading">Setting type…</div>
+  <canvas id="book" hidden></canvas>
   <div class="controls">
     <button id="prev">◀ Prev</button>
     <span id="status"></span>
     <button id="next">Next ▶</button>
-    <select id="display">
-      <option value="double">Double page</option>
-      <option value="single">Single page</option>
+    <select id="trim" title="Page size">
+      <option value="auto">Page: auto</option>
+      <option value="book">8 × 10 in book</option>
+      <option value="phone">4.5 × 7.5 in phone</option>
     </select>
-    <select id="direction">
-      <option value="ltr">Left to right</option>
-      <option value="rtl">Right to left</option>
-    </select>
-    <label><input type="checkbox" id="debug"> Show construction</label>
+    <label><input type="checkbox" id="guides"> Layout guides</label>
   </div>
 
   <script type="module">
     import { Book } from './crease.js';
+    import { parseRecipe } from './recipe-md.js';
+    import { TEMPLATES, loadFonts, loadImages, typesetRecipe, drawPage, coverPage, platePage, textPage } from './typeset.js';
 
-    const COUNT = 12;
-    const hues = [12, 38, 160, 200, 260, 320];
+    const canvas = document.getElementById('book');
+    const status = document.getElementById('status');
+    const state = { trim: 'auto', guides: false, page: 1 };
+    let book, lastKey;
 
-    // Generated placeholder page: tinted paper, page number, fake text lines.
-    const painted = (n) => (ctx, w, h) => {
-      ctx.fillStyle = `hsl(${hues[n % hues.length]} 45% 94%)`;
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = `hsl(${hues[n % hues.length]} 35% 35%)`;
-      ctx.font = 'bold 64px Georgia, serif';
-      ctx.fillText(String(n), 36, 96);
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      for (let y = 140; y < h - 50; y += 18) {
-        const len = (w - 72) * (0.6 + 0.4 * Math.abs(Math.sin(y * n)));
-        ctx.fillRect(36, y, len, 7);
-      }
-      ctx.font = '13px system-ui';
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillText(`— ${n} —`, w / 2 - 18, h - 22);
-    };
+    const [recipe] = await Promise.all([
+      fetch('/recipes/shepherds-pie.md').then((r) => r.text()).then(parseRecipe),
+      loadFonts(),
+    ]);
+    const images = await loadImages(recipe);
+    const pie = images.get('/art/shepherds-pie.svg'), sprig = images.get('/art/rosemary.svg');
 
-    const cover = (title) => (ctx, w, h) => {
-      ctx.fillStyle = '#2d3b4f';
-      ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = '#c9a54a';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(20, 20, w - 40, h - 40);
-      ctx.fillStyle = '#e8d9a8';
-      ctx.font = 'bold 40px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(title, w / 2, h / 2);
-    };
+    // Portrait phones read one page at a time, on the phone trim.
+    const portraitPhone = () => matchMedia('(orientation: portrait)').matches && innerWidth < 760;
 
-    const pages = [];
-    for (let n = 1; n <= COUNT; n++) {
-      if (n === 1) pages.push(cover('crease.js'));
-      else if (n === COUNT) pages.push(cover('The End'));
-      else pages.push(painted(n));
+    function build() {
+      const phone = portraitPhone();
+      const tplName = state.trim === 'auto' ? (phone ? 'phone' : 'book') : state.trim;
+      const display = phone ? 'single' : 'double';
+      const tpl = TEMPLATES[tplName];
+      const key = [tplName, display, state.guides, innerWidth, innerHeight].join('|');
+      if (key === lastKey) return;
+      lastKey = key;
+      if (book) state.page = book.page;
+
+      // Book: cover, a full-page plate facing the recipe, the recipe, back cover.
+      const pages = [
+        coverPage(tpl, { title: 'Internet Cookbook', subtitle: 'Recipes set by hand, on the web', art: sprig }),
+        platePage(tpl, { art: pie, caption: 'Shepherd’s pie, fresh from the oven' }),
+        ...typesetRecipe(recipe, tpl, images),
+      ];
+      if (pages.length % 2 === 0) pages.push(textPage(tpl, [''])); // back cover lands on a left page
+      pages.push(textPage(tpl, ['Typeset with Pretext', `${tpl.name} · ${new Date().getFullYear()}`]));
+
+      // Page size on screen: as large as fits, keeping the trim's proportions.
+      const pad = phone ? 12 : 28;
+      const aspect = tpl.page.height / tpl.page.width;
+      const availW = (innerWidth - 2 * pad) / (display === 'double' ? 2 : 1);
+      const availH = innerHeight - 2 * pad - 90;
+      const pageWidth = Math.floor(Math.max(160, Math.min(availW, availH / aspect, 640)));
+
+      book?.destroy();
+      book = new Book(canvas, {
+        pages: pages.map((p, i) => (g, W, H) => {
+          g.scale(W / tpl.page.width, H / tpl.page.height);
+          drawPage(g, p, tpl, { pageNumber: i + 1, guides: state.guides });
+        }),
+        pageWidth,
+        pageHeight: Math.round(pageWidth * aspect),
+        display,
+        padding: pad,
+        hard: [1, pages.length],
+        onTurn: update,
+      });
+      book.goTo(state.page);
+      update();
     }
 
-    const status = document.getElementById('status');
-    const book = new Book(document.getElementById('book'), {
-      pages,
-      pageWidth: 400,
-      pageHeight: 518,
-      hard: [1, COUNT],
-      onTurn: () => update(),
-    });
-    const update = () => (status.textContent = `page ${book.page} / ${book.pageCount}`);
-    update();
+    function update() {
+      status.textContent = `page ${book.page} / ${book.pageCount}`;
+    }
+
+    build();
+    document.getElementById('loading').remove();
+    canvas.hidden = false;
 
     document.getElementById('prev').onclick = () => book.prev();
     document.getElementById('next').onclick = () => book.next();
-    document.getElementById('display').onchange = (e) => (book.set({ display: e.target.value }), update());
-    document.getElementById('direction').onchange = (e) => book.set({ direction: e.target.value });
-    document.getElementById('debug').onchange = (e) => book.set({ debug: e.target.checked });
-    window.book = book;
+    document.getElementById('trim').onchange = (e) => { state.trim = e.target.value; build(); };
+    document.getElementById('guides').onchange = (e) => { state.guides = e.target.checked; build(); };
+    let resizeTimer;
+    addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(build, 150); });
+    window.book = () => book;
   </script>
 </body>
 </html>
