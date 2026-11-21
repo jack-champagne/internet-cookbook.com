@@ -194,6 +194,12 @@ export class Book {
     return this.pages.length;
   }
 
+  /** Page numbers currently showing, left to right (one or two). */
+  get visiblePages() {
+    const v = this._visible();
+    return [v.left, v.right].filter((n) => n != null);
+  }
+
   next() { return this._auto('forward'); }
   prev() { return this._auto('backward'); }
 
