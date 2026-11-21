@@ -6,7 +6,7 @@ prep: 10 min
 cook: 25 min
 ---
 
-Browned ground beef and sweet, golden onion with a warm hint of white pepper, folded through fluffy basmati — a quick, comforting weeknight bowl.
+Browned ground beef and sweet, golden onion with a warm hint of white pepper, mixed through fluffy basmati and finished with ketchup or hot sauce — a quick, comforting weeknight bowl.
 
 ## Ingredients
 
@@ -17,6 +17,7 @@ Browned ground beef and sweet, golden onion with a warm hint of white pepper, fo
 - 1 large yellow onion, diced
 - ½ tsp ground white pepper
 - 1 lb ground beef, 80 or 85% lean
+- Ketchup or hot sauce, to serve
 
 ## Method
 
@@ -25,4 +26,4 @@ Browned ground beef and sweet, golden onion with a warm hint of white pepper, fo
 3. **Add the white pepper.** Stir it into the onion and cook for 30 seconds, until fragrant.
 4. **Brown the beef.** Add the ground beef, break it up with a spoon, and cook until browned all through. Tilt the pan and spoon off the excess fat.
 5. **Fluff the rice** with a fork.
-6. **Combine and serve.** Fold the beef and onion through the rice, taste for salt, and serve hot.
+6. **Mix and serve.** Mix the beef and onion through the rice, taste for salt, and serve hot with ketchup or hot sauce at the table.
