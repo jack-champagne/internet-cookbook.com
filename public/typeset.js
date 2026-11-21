@@ -107,6 +107,14 @@ const fontOf = (st, run = {}, scale = 1) => {
  * run and the next. At 8× the rounding shrinks to an eighth.
  */
 const MEASURE = 8;
+
+/**
+ * Lines are laid out to fit SLACK points less than the column. Text measured
+ * at one size and drawn at another can differ by a fraction of a point per
+ * line where the browser hints fonts; the slack keeps a line that would end
+ * right at the margin from poking past it. Invisible in ragged-right text.
+ */
+const SLACK = 1;
 const measureItems = (runs, st) => runs.filter((r) => r.text).map((r) => ({
   text: st.caps ? r.text.toUpperCase() : r.text,
   font: fontOf(st, r, MEASURE),
@@ -179,7 +187,7 @@ function flowText(flow, runs, st, { indent = 0, hang = 0, onFirstLine, fixedSpan
     const lineFor = () => {
       const span = fixedSpan || flow.span(flow.y, flow.y + st.leading);
       const ind = indent + (first ? 0 : hang);
-      const width = Math.max(20, span.x1 - span.x0 - ind);
+      const width = Math.max(20, span.x1 - span.x0 - ind - SLACK);
       return { span, ind, range: layoutNextRichInlineLineRange(prepared, width * MEASURE, cursor) };
     };
     let { span, ind, range } = lineFor();
@@ -225,7 +233,7 @@ function flowIngredients(flow, items, st, cfg) {
   const colW = (x1 - x0 - cfg.gap * (cfg.columns - 1)) / cfg.columns;
   const heights = items.map((runs) => {
     const prepared = prepareRichInline(measureItems(runs, st));
-    const { lineCount } = measureRichInlineStats(prepared, (colW - cfg.hang) * MEASURE);
+    const { lineCount } = measureRichInlineStats(prepared, (colW - cfg.hang - SLACK) * MEASURE);
     return lineCount * st.leading + cfg.itemGap;
   });
   // Split where the tallest column is shortest.
