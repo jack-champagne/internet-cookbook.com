@@ -364,18 +364,59 @@ export function typesetRecipe(recipe, tpl, images) {
 // Simple fixed pages for the test book
 // ---------------------------------------------------------------------------
 
-export function coverPage(tpl, { title, subtitle, art }) {
-  const { width: W, height: H } = tpl.page, S = tpl.styles, items = [];
-  const big = { ...S.title, size: S.title.size * 1.25 };
-  items.push({ type: 'frame', inset: Math.round(W * 0.05), color: '#b9ab8f' });
-  items.push({ type: 'text', x: W / 2, y: H * 0.36, text: title, font: fontOf(big), color: ink, align: 'center' });
-  items.push({ type: 'text', x: W / 2, y: H * 0.36 + big.size * 0.9, text: subtitle, font: fontOf({ ...S.lede }), color: muted, align: 'center' });
-  if (art) {
-    const w = W * 0.42, h = w * art.naturalHeight / art.naturalWidth;
-    items.push({ type: 'image', img: art, x: (W - w) / 2, y: H * 0.56, w, h, rotate: -8 });
+// Covers are boards printed on both sides: the outside cover, and the
+// endpaper glued inside it. A book is: front board, front endpaper,
+// contents (starting on a right-hand page), back endpaper, back board.
+const BOARD = { cloth: '#3d4a3a', title: '#efe6cf', subtitle: '#c8bf9f', frame: '#b9a067' };
+const ENDPAPER = { paper: '#cdd1bd', motif: '#8f987c' };
+
+const sprigItem = (art, x, y, w, extra = {}) => ({ type: 'image', img: art, x, y, w, h: w * art.naturalHeight / art.naturalWidth, ...extra });
+
+/** Outside of a cover board. side: 'front' (title) or 'back' (emblem + colophon). */
+export function boardPage(tpl, { side, title, subtitle, art, lines = [] }) {
+  const { width: W, height: H } = tpl.page, S = tpl.styles;
+  const items = [{ type: 'fill', color: BOARD.cloth }, { type: 'frame', inset: Math.round(W * 0.05), color: BOARD.frame }];
+  if (side === 'front') {
+    const big = { ...S.title, size: S.title.size * 1.25 };
+    items.push({ type: 'text', x: W / 2, y: H * 0.36, text: title, font: fontOf(big), color: BOARD.title, align: 'center' });
+    items.push({ type: 'text', x: W / 2, y: H * 0.36 + big.size * 0.9, text: subtitle, font: fontOf(S.lede), color: BOARD.subtitle, align: 'center' });
+    if (art) { const w = W * 0.42; items.push(sprigItem(art, (W - w) / 2, H * 0.56, w, { rotate: -8, tint: BOARD.title })); }
+  } else {
+    if (art) { const w = W * 0.22; items.push(sprigItem(art, (W - w) / 2, H * 0.44, w, { rotate: -8, tint: BOARD.subtitle })); }
+    lines.forEach((text, i) => items.push({ type: 'text', x: W / 2, y: H * 0.56 + i * S.folio.leading * 1.3, text, font: fontOf(S.folio), color: BOARD.subtitle, align: 'center' }));
   }
   return { items, floats: [], anchors: [] };
 }
+
+/** Endpaper: the inside of a cover board, a quiet repeating motif. */
+export function endpaperPage(tpl, { art }) {
+  const { width: W, height: H } = tpl.page;
+  const items = [{ type: 'fill', color: ENDPAPER.paper }];
+  if (art) {
+    const w = W / 5.5, stepX = W / 3.2, stepY = H / 6;
+    for (let row = -1, y = -stepY / 3; y < H; row++, y += stepY) {
+      for (let x = (row % 2 ? stepX / 2 : 0) - w / 2; x < W; x += stepX) {
+        items.push(sprigItem(art, x, y, w, { rotate: row % 2 ? 24 : -18, tint: ENDPAPER.motif, opacity: 0.55 }));
+      }
+    }
+  }
+  return { items, floats: [], anchors: [] };
+}
+
+/** Title page: the first page of the contents, on the right. */
+export function titlePage(tpl, { title, subtitle }) {
+  const { width: W, height: H } = tpl.page, S = tpl.styles;
+  return {
+    items: [
+      { type: 'text', x: W / 2, y: H * 0.42, text: title, font: fontOf(S.title), color: ink, align: 'center' },
+      { type: 'rule', x: W * 0.42, y: H * 0.42 + S.title.size * 0.55, w: W * 0.16, color: rule },
+      { type: 'text', x: W / 2, y: H * 0.42 + S.title.size * 0.55 + S.lede.leading * 1.4, text: subtitle, font: fontOf(S.lede), color: muted, align: 'center' },
+    ],
+    floats: [], anchors: [],
+  };
+}
+
+export const blankPage = () => ({ items: [], floats: [], anchors: [] });
 
 export function platePage(tpl, { art, caption }) {
   const { width: W, height: H } = tpl.page, S = tpl.styles;
@@ -390,17 +431,29 @@ export function platePage(tpl, { art, caption }) {
   };
 }
 
-export function textPage(tpl, lines) {
-  const { width: W, height: H } = tpl.page, S = tpl.styles;
-  return {
-    items: lines.map((text, i) => ({ type: 'text', x: W / 2, y: H / 2 + (i - (lines.length - 1) / 2) * S.body.leading, text, font: fontOf(S.body), color: muted, align: 'center' })),
-    floats: [], anchors: [],
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Rendering a page description
 // ---------------------------------------------------------------------------
+
+/** Line art recoloured to `color` (e.g. cream on a dark board), at device size. */
+const tintCache = new Map();
+function tinted(img, color, w, h) {
+  const cw = Math.max(1, Math.round(w)), ch = Math.max(1, Math.round(h));
+  const key = `${img.src}|${color}|${cw}x${ch}`;
+  let c = tintCache.get(key);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = cw;
+    c.height = ch;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, cw, ch);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = color;
+    g.fillRect(0, 0, cw, ch);
+    tintCache.set(key, c);
+  }
+  return c;
+}
 
 /** `400 12px "Crimson Pro"` at scale 2 → `400 24px "Crimson Pro"` */
 const scaleFont = (font, s) => font.replace(/([\d.]+)px/, (_, n) => `${+n * s}px`);
@@ -455,8 +508,12 @@ export function drawPage(ctx, page, tpl, { pageNumber, guides = false } = {}) {
       ctx.globalAlpha = it.opacity ?? 1;
       ctx.translate(it.x + it.w / 2, it.y + it.h / 2);
       if (it.rotate) ctx.rotate((it.rotate * Math.PI) / 180);
-      ctx.drawImage(it.img, -it.w / 2, -it.h / 2, it.w, it.h);
+      const src = it.tint ? tinted(it.img, it.tint, it.w * s, it.h * s) : it.img;
+      ctx.drawImage(src, -it.w / 2, -it.h / 2, it.w, it.h);
       ctx.restore();
+    } else if (it.type === 'fill') {
+      ctx.fillStyle = it.color;
+      ctx.fillRect(0, 0, W, H);
     } else if (it.type === 'rule') {
       ctx.fillStyle = it.color;
       ctx.fillRect(it.x, it.y, it.w, 0.6);

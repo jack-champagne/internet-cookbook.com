@@ -16,6 +16,32 @@ test('desktop: loads without errors as a two-page book', async () => {
   assert.ok(info.pages >= 4 && info.pages % 2 === 0, `even page count, got ${info.pages}`);
 });
 
+test('book structure: two-sided cover boards, contents start on a right page', async () => {
+  const s = await desktop.page.evaluate(() => {
+    const b = window.book(), n = b.pageCount;
+    b.goTo(1);
+    const closedFront = b.visiblePages;
+    b.goTo(n);
+    const closedBack = b.visiblePages;
+    b.goTo(2);
+    const opening = b.visiblePages;
+    return { n, hard: b.opts.hard, closedFront, closedBack, opening, status: document.getElementById('status').textContent };
+  });
+  assert.equal(s.n % 2, 0, 'even page count');
+  assert.deepEqual(s.hard, [1, 2, s.n - 1, s.n], 'only the cover boards (both sides) are rigid');
+  assert.deepEqual(s.closedFront, [1], 'closed book shows only the front cover');
+  assert.deepEqual(s.closedBack, [s.n], 'closed from the back shows only the back cover');
+  assert.deepEqual(s.opening, [2, 3], 'front endpaper faces the first contents page');
+});
+
+test('the counter names every visible page', async () => {
+  const { page } = desktop;
+  await page.evaluate(() => window.book().goTo(1));
+  await page.click('#next');
+  await page.waitForFunction(() => window.book().visiblePages.length === 2, null, { timeout: 5000 });
+  await page.waitForFunction(() => /^pages 2–3 of \d+$/.test(document.getElementById('status').textContent), null, { timeout: 5000 });
+});
+
 test('next() turns the page', async () => {
   const { page } = desktop;
   await page.evaluate(() => window.book().goTo(1));

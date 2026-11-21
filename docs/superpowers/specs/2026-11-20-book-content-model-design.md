@@ -183,7 +183,9 @@ recipe:
 
 | Type | Source | Notes |
 |---|---|---|
-| cover, back cover | `book.yaml` `cover`, implicit back | Hard pages in the viewer. |
+| cover boards (front, back) | `book.yaml` `cover`; theme cover design | Rigid leaves: outside cover + endpaper on each. |
+| endpaper | theme motif | Inside of each cover board. |
+| title page | `book.yaml` `title`, `subtitle` | First contents page (page 3). |
 | toc | generated | Chapters and recipes with page numbers, per edition. |
 | chapter opener | `chapters[].opener` | Title + optional art. |
 | prose | `page:` Markdown | Introductions, essays. |
@@ -218,9 +220,16 @@ data; `typeset` and `assemble` produce plain layout data; `render`, `html` and
    slug, in-text image without a description.
 2. **Lay out** every edition in headless Chromium (Playwright), using the
    same `typeset/` code the browser uses.
-3. **Assemble**: apply spread rules (plates left facing their recipe, `start`
-   constraints, blank pages inserted where needed, back cover on a left page),
-   number pages, map pages to entries.
+3. **Assemble**: apply spread rules, number pages, map pages to entries.
+   Book structure follows a physical book:
+   - Each cover is a rigid board printed on both sides: page 1 is the outside
+     front cover and page 2 its endpaper; the last two pages are the back
+     endpaper and the outside back cover. Only these four pages are rigid.
+   - Contents start on page 3, a right-hand page; the page count is even.
+   - Plates go on the left facing their recipe; `start` constraints are met by
+     inserting blank pages *inside* the contents, never by moving a cover.
+   - Front and back covers share one cover design (board colour, frame);
+     endpapers carry a quiet repeating motif from the theme.
 4. **Preflight** (below). Errors stop the build; warnings are printed.
 5. **Write the site** to `dist/`: one HTML article page per address, one
    frozen layout file per edition, assets (fonts, art, viewer code).
@@ -315,7 +324,7 @@ Run per edition over the assembled layouts. Overflow tolerance is 0.5 pt.
 | Image beyond the bleed | error |
 | Font lacks a character used (would fall back to another font) | error |
 | Plate not on the left facing its recipe; `start` constraint not met | error |
-| Back cover not on a left page | error |
+| Cover structure broken (covers not two-sided boards at both ends, contents not starting on page 3, odd page count) | error |
 | Heading as the last line of a page (not kept with what follows) | error |
 | Widow/orphan: a single line of a paragraph or step alone at a page top or bottom | warning |
 | Entry ends with a page holding only a note or under three lines | warning |

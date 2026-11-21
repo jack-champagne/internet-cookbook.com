@@ -32,7 +32,7 @@
   <script type="module">
     import { Book } from './crease.js';
     import { parseRecipe } from './recipe-md.js';
-    import { TEMPLATES, loadFonts, loadImages, typesetRecipe, drawPage, coverPage, platePage, textPage } from './typeset.js';
+    import { TEMPLATES, loadFonts, loadImages, typesetRecipe, drawPage, boardPage, endpaperPage, titlePage, platePage, blankPage } from './typeset.js';
 
     const canvas = document.getElementById('book');
     const status = document.getElementById('status');
@@ -59,14 +59,24 @@
       lastKey = key;
       if (book) state.page = book.page;
 
-      // Book: cover, a full-page plate facing the recipe, the recipe, back cover.
-      const pages = [
-        coverPage(tpl, { title: 'Internet Cookbook', subtitle: 'Recipes set by hand, on the web', art: sprig }),
+      // A real book: each cover is a board printed on both sides (outside +
+      // endpaper). Contents start on page 3, a right-hand page: title page,
+      // then the plate on the left facing the recipe on the right.
+      const title = 'Internet Cookbook', subtitle = 'Recipes set by hand, on the web';
+      const contents = [
+        titlePage(tpl, { title, subtitle }),
         platePage(tpl, { art: pie, caption: 'Shepherd’s pie, fresh from the oven' }),
         ...typesetRecipe(recipe, tpl, images),
       ];
-      if (pages.length % 2 === 0) pages.push(textPage(tpl, [''])); // back cover lands on a left page
-      pages.push(textPage(tpl, ['Typeset with Pretext', `${tpl.name} · ${new Date().getFullYear()}`]));
+      // Pad inside the book so the back board's inside lands on a right-hand page.
+      if (contents.length % 2) contents.push(blankPage());
+      const pages = [
+        boardPage(tpl, { side: 'front', title, subtitle, art: sprig }),
+        endpaperPage(tpl, { art: sprig }),
+        ...contents,
+        endpaperPage(tpl, { art: sprig }),
+        boardPage(tpl, { side: 'back', art: sprig, lines: [title, `Typeset with Pretext · ${tpl.name}`] }),
+      ];
 
       // Page size on screen: as large as fits, keeping the trim's proportions.
       const pad = phone ? 12 : 28;
@@ -85,7 +95,7 @@
         pageHeight: Math.round(pageWidth * aspect),
         display,
         padding: pad,
-        hard: [1, pages.length],
+        hard: [1, 2, pages.length - 1, pages.length], // both sides of each cover board
         onTurn: update,
       });
       book.goTo(state.page);
@@ -93,7 +103,8 @@
     }
 
     function update() {
-      status.textContent = `page ${book.page} / ${book.pageCount}`;
+      const shown = book.visiblePages;
+      status.textContent = shown.length === 2 ? `pages ${shown[0]}–${shown[1]} of ${book.pageCount}` : `page ${shown[0] ?? book.page} of ${book.pageCount}`;
     }
 
     build();
