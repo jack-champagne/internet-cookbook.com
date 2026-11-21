@@ -20,7 +20,10 @@ printf '/*\n  X-Robots-Tag: noindex\n' > "$headers"
 out=$(npx wrangler versions upload --preview-alias "$alias" --message "$message" 2>&1 | tee /dev/stderr)
 url=$(printf '%s\n' "$out" | grep -i 'alias' | grep -oE 'https://[^ ]+\.workers\.dev' | tail -1)
 if [ -z "$url" ]; then
-  echo "Could not find the preview URL in Wrangler's output" >&2
+  echo "The version uploaded, but Cloudflare returned no preview URL." >&2
+  echo "Preview URLs are a trigger setting: they turn on only after the Worker's" >&2
+  echo "triggers are applied once (\`npx wrangler triggers deploy\` or a tagged release)" >&2
+  echo "with workers_dev and preview_urls enabled in wrangler.jsonc." >&2
   exit 1
 fi
 echo "Preview: $url"
