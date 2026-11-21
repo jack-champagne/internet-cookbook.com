@@ -1,5 +1,10 @@
 name: CI
 
+# Every push and pull request: tests.
+# Pull requests: a preview version at its own URL, commented on the PR.
+# main: the "latest draft" preview at a stable URL.
+# Neither touches the live site; tagged releases do (deploy.yml).
+
 on:
   push:
     branches: ['**']
@@ -9,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,3 +36,59 @@ jobs:
         run: npm run test:e2e
       - name: Validate the Cloudflare deploy (no upload)
         run: npx wrangler deploy --dry-run
+
+  preview:
+    name: Preview (pull request)
+    needs: test
+    # Branches in this repository only: forks don't get deploy secrets.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Upload preview version
+        id: upload
+        run: |
+          ./scripts/upload-preview.sh "pr-${{ github.event.pull_request.number }}" "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.head.sha }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Comment the preview link on the pull request
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --edit-last --create-if-none --body \
+            "**Preview:** ${{ steps.upload.outputs.url }}
+          Built from ${{ github.event.pull_request.head.sha }}. Not indexed by search engines; the live site is unchanged."
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  draft:
+    name: Latest draft (main)
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Upload latest draft
+        id: upload
+        run: |
+          ./scripts/upload-preview.sh draft "main: ${{ github.sha }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Summary
+        run: |
+          echo "Latest draft: ${{ steps.upload.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
