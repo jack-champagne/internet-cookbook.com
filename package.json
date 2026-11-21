@@ -5,11 +5,14 @@
   "type": "module",
   "main": "public/crease.js",
   "exports": "./public/crease.js",
-  "files": [
-    "public/crease.js"
-  ],
   "scripts": {
     "test": "node --test",
+    "test:e2e": "node --test --test-concurrency=1 'e2e/*.e2e.js'",
     "deploy": "wrangler deploy"
+  },
+  "private": true,
+  "devDependencies": {
+    "playwright": "1.65.1",
+    "wrangler": "4.166.0"
   }
 }
