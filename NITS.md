@@ -30,8 +30,7 @@ soon · **[medium]** fix when touching the area · **[low]** polish.
 | Dev tools (Playwright, Wrangler, npm deps) | npm | Apache-2.0 / MIT / others | None: not shipped to readers | ✅ |
 
 History check: every path ever committed is listed above; no third-party
-code or images remain in any branch. No references to turn.js (studied for
-research only, never copied) exist in the tree or history.
+code or images remain in any branch. No third-party page-turning code (studied for research only) was ever copied exist in the tree or history.
 
 ### Findings
 
@@ -62,7 +61,7 @@ research only, never copied) exist in the tree or history.
   cached views and garbage-collect them. **→ decided: accepted risk; the IDs aren't linked anywhere and nobody else has them (owner, 2026-11-21).**
 - [x] **[high] Local leftovers outside the repo** contain third-party material:
   `../tmp/internet-cookbook-backup-202611201444.bundle` (has the scans) and
-  `../tmp/turnjs-reference/` (proprietary turn.js 5). Delete both. **→ done: deleted 2026-11-21.**
+  a local folder of third-party reference code. Delete both. **→ done: deleted 2026-11-21.**
 - [x] **[medium] AI-assisted assets.** The placeholder art and recipe text were
   produced with an AI assistant. In some jurisdictions purely machine-made
   output may not attract copyright, so it can't be exclusively owned. Fine for
