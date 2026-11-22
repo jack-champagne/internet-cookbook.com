@@ -1,0 +1,20 @@
+html, body { margin: 0; }
+body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+       gap: 14px; background: #e9e6df; font: 14px system-ui, sans-serif; color: #4a453d; padding: 10px 0 18px; box-sizing: border-box; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; padding: 0 10px; }
+button, select { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid #b9ab8f; background: #fdfcf8; color: inherit; }
+#status { min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
+#loading { color: #8a7f6c; }
+#book:focus { outline: none; }
+#book:focus-visible { outline: 2px solid #8a7f6c; outline-offset: 4px; border-radius: 2px; }
+#site-links { font-size: 12px; color: #8a7f6c; }
+#site-links a { color: inherit; }
+
+/* Plain pages: 404, licences */
+body.plain { display: block; padding: 40px 18px; }
+.plain-page { max-width: 640px; margin: 0 auto; background: #fdfcf8; padding: 32px 30px; box-shadow: 0 3px 18px rgba(0,0,0,.12);
+              font: 17px/1.5 "Crimson Pro", Georgia, serif; color: #2b2925; }
+.plain-page h1, .plain-page h2 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; line-height: 1.1; }
+.plain-page h1 { font-size: 36px; margin: 0 0 12px; }
+.plain-page h2 { font-size: 24px; margin: 26px 0 8px; }
+.plain-page a { color: #4f6346; }

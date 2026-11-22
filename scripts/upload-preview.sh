@@ -7,15 +7,13 @@ set -euo pipefail
 alias="$1"
 message="$2"
 
-# Previews must never be indexed. Production has no _headers file of its own
-# yet, so a temporary one is added for the upload and removed afterwards.
+# Previews must never be indexed: add a noindex rule to the site's _headers
+# for this upload only, and restore the original afterwards.
 headers=public/_headers
-if [ -e "$headers" ]; then
-  echo "public/_headers exists; merge the noindex rule into it before using this script" >&2
-  exit 1
-fi
-trap 'rm -f "$headers"' EXIT
-printf '/*\n  X-Robots-Tag: noindex\n' > "$headers"
+backup=$(mktemp)
+cp "$headers" "$backup"
+trap 'cp "$backup" "$headers"; rm -f "$backup"' EXIT
+printf '\n# Preview uploads only\n/*\n  X-Robots-Tag: noindex\n' >> "$headers"
 
 out=$(npx wrangler versions upload --preview-alias "$alias" --message "$message" 2>&1 | tee /dev/stderr)
 url=$(printf '%s\n' "$out" | grep -i 'alias' | grep -oE 'https://[^ ]+\.workers\.dev' | tail -1)

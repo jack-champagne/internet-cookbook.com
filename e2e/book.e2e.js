@@ -41,6 +41,18 @@ test('the counter names every visible page', async () => {
   await page.waitForFunction(() => /^pages 2–3 of \d+$/.test(document.getElementById('status').textContent), null, { timeout: 5000 });
 });
 
+test('licences and 404 pages load cleanly under the site CSP', async () => {
+  for (const path of ['/licenses.html', '/404.html']) {
+    const plain = await openBook({}, path);
+    try {
+      assert.deepEqual(plain.errors, [], `${path}: ${plain.errors.join('; ')}`);
+      assert.ok((await plain.page.textContent('h1')).length > 3);
+    } finally {
+      await plain.close();
+    }
+  }
+});
+
 test('next() turns the page', async () => {
   const { page } = desktop;
   await page.evaluate(() => window.book().goTo(1));
@@ -93,13 +105,9 @@ test('typeset text: exact word spaces, nothing past the margins or into images',
 test('typesetting edge cases: long ingredient lists, tall images, missing images', async () => {
   const r = await desktop.page.evaluate(async () => {
     const T = await import('/typeset.js'), { parseRecipe } = await import('/recipe-md.js');
-    const tall = new Image();
-    tall.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="1000"><rect width="100" height="1000" fill="#ccc"/></svg>');
-    await tall.decode();
     const ingredients = Array.from({ length: 90 }, (_, i) => `- ${i + 1} ingredient with a fairly long description to wrap`).join('\n');
-    const recipe = parseRecipe(`---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![tall](/tall.svg){width=100%}\n\n![gone](/missing.svg){width=50%}\n\n1. Step.\n`);
-    const loaded = await T.loadImages(recipe); // /tall.svg and /missing.svg both fail to load here
-    const images = new Map([...loaded, ['/tall.svg', tall]]);
+    const recipe = parseRecipe(`---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![tall](/__fixtures/tall.svg){width=100%}\n\n![gone](/missing.svg){width=50%}\n\n1. Step.\n`);
+    const images = await T.loadImages(recipe); // the tall fixture loads; /missing.svg doesn't
     const out = {};
     for (const [name, tpl] of Object.entries(T.TEMPLATES)) {
       const pages = T.typesetRecipe(recipe, tpl, images);
