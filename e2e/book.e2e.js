@@ -2,8 +2,7 @@
 // turns pages, and page turns never "snap" at their start or end.
 import { test, after, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { devices } from 'playwright';
-import { openBook } from './helpers.js';
+import { openBook, phone as phoneContext } from './helpers.js';
 
 let desktop;
 before(async () => { desktop = await openBook(); });
@@ -161,7 +160,7 @@ test('page turns match the static book exactly at both ends (no shadow snap)', a
 });
 
 test('portrait phone: single pages on the phone trim, no errors', async () => {
-  const phone = await openBook({ ...devices['iPhone 13'] });
+  const phone = await openBook(phoneContext());
   try {
     assert.deepEqual(phone.errors, []);
     const info = await phone.page.evaluate(() => ({ display: window.book().opts.display, w: window.book().W, h: window.book().H }));
