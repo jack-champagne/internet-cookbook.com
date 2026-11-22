@@ -122,7 +122,28 @@ const measureItems = (runs, st) => runs.filter((r) => r.text).map((r) => ({
 }));
 
 /** Where the baseline sits inside a line box of the style's leading. */
-const baselineIn = (st) => (st.leading - st.size) / 2 + st.size * 0.78;
+/**
+ * Where the baseline sits inside a line box of the style's leading: the
+ * font's real ascent and descent (measured once per font) are centred in the
+ * line, as browsers do. Falls back to typical proportions if the canvas can't
+ * report font metrics.
+ */
+const metricsCache = new Map();
+function baselineIn(st) {
+  const font = fontOf(st, {}, MEASURE);
+  let m = metricsCache.get(font);
+  if (!m) {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = font;
+    const t = ctx.measureText('Hxgy');
+    const ascent = t.fontBoundingBoxAscent, descent = t.fontBoundingBoxDescent;
+    m = Number.isFinite(ascent) && Number.isFinite(descent) && ascent > 0
+      ? { ascent: ascent / MEASURE / st.size, descent: descent / MEASURE / st.size }
+      : { ascent: 0.9, descent: 0.25 };
+    metricsCache.set(font, m);
+  }
+  return (st.leading - (m.ascent + m.descent) * st.size) / 2 + m.ascent * st.size;
+}
 
 // ---------------------------------------------------------------------------
 // The flow: a cursor moving down the page, with floats that narrow lines.
@@ -222,6 +243,12 @@ function flowText(flow, runs, st, { indent = 0, hang = 0, onFirstLine, fixedSpan
 /** Ingredient list, balanced over the template's columns. */
 function flowIngredients(flow, items, st, cfg) {
   const { x0, x1 } = flow.box;
+  const single = () => {
+    for (const runs of items) {
+      flowText(flow, runs, st, { hang: cfg.hang });
+      flow.y += cfg.itemGap;
+    }
+  };
   if (cfg.columns < 2) {
     for (const runs of items) {
       flowText(flow, runs, st, { hang: cfg.hang });
@@ -244,6 +271,9 @@ function flowIngredients(flow, items, st, cfg) {
     const tallest = Math.max(acc, total - acc);
     if (tallest < best.h) best = { k: i + 1, h: tallest };
   });
+  // Columns are balanced on one page; a list too long for a whole page flows
+  // as a single column across pages instead of overflowing the margin.
+  if (best.h > flow.box.bottom - flow.box.top) return single();
   if (!flow.fits(best.h)) flow.newPage();
   const top = flow.y;
   const columns = [items.slice(0, best.k), items.slice(best.k)];
@@ -260,7 +290,11 @@ function flowIngredients(flow, items, st, cfg) {
 
 const pct = (v, of) => (typeof v === 'string' && v.endsWith('%') ? (parseFloat(v) / 100) * of : parseFloat(v) || 0);
 
-/** Loads every image a recipe references; resolves to Map(src → HTMLImageElement). */
+/**
+ * Loads every image a recipe references; resolves to Map(src → HTMLImageElement).
+ * An image that fails to load is left out (with a warning) and its block is
+ * skipped, rather than failing the whole book.
+ */
 export async function loadImages(recipe) {
   const map = new Map();
   await Promise.all(recipe.blocks.filter((b) => b.type === 'image').map(async (b) => {
@@ -268,15 +302,26 @@ export async function loadImages(recipe) {
     const img = new Image();
     img.src = b.src;
     map.set(b.src, img);
-    await img.decode();
+    try {
+      await img.decode();
+    } catch {
+      map.delete(b.src);
+      console.warn(`Image could not be loaded and was left out: ${b.src}`);
+    }
   }));
   return map;
 }
 
 function placeImage(flow, block, img) {
-  const a = block.attrs, { x0, x1 } = flow.box, cw = x1 - x0;
+  if (!img) return; // failed to load; reported by loadImages
+  const a = block.attrs, { x0, x1, top, bottom } = flow.box, cw = x1 - x0;
   const ratio = (img.naturalHeight || 1) / (img.naturalWidth || 1);
-  const w = pct(a.width ?? '100%', cw), h = w * ratio;
+  let w = pct(a.width ?? '100%', cw), h = w * ratio;
+  if (!a.decor && h > bottom - top) {
+    // In-text images must fit the text area: scale down, keeping proportions.
+    h = bottom - top;
+    w = h / ratio;
+  }
   if (a.decor) {
     // Decorative: free placement relative to its anchor; doesn't move text.
     const anchor = { x: x0, y: flow.y };
@@ -459,6 +504,7 @@ function tinted(img, color, w, h) {
     g.fillStyle = color;
     g.fillRect(0, 0, cw, ch);
     tintCache.set(key, c);
+    if (tintCache.size > 64) tintCache.delete(tintCache.keys().next().value); // oldest first
   }
   return c;
 }

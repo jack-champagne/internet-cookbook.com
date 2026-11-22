@@ -34,7 +34,12 @@ export function parseAttrs(src = '') {
   return attrs;
 }
 
-/** Inline emphasis: `**bold**` and `*italic*` → [{ text, bold, italic }]. */
+/**
+ * Inline emphasis: `**bold**` and `*italic*` → [{ text, bold, italic }].
+ * A marker opens only when followed by a non-space and closed by a matching
+ * marker later on (so `2 * 3` and a stray `*` stay literal), and closes only
+ * after a non-space. `\*` (and `\\`, `\_`) is a literal character.
+ */
 export function parseInline(src) {
   const runs = [];
   let bold = false, italic = false, buf = '';
@@ -42,18 +47,32 @@ export function parseInline(src) {
     if (buf) runs.push({ text: buf, bold, italic });
     buf = '';
   };
+  const canOpen = (i, marker) => {
+    const next = src[i + marker.length];
+    return next !== undefined && !/\s/.test(next) && src.indexOf(marker, i + marker.length + 1) !== -1;
+  };
+  const canClose = (i) => i > 0 && !/\s/.test(src[i - 1]);
   for (let i = 0; i < src.length; ) {
-    if (src.startsWith('**', i)) {
+    const ch = src[i];
+    if (ch === '\\' && /[\\*_]/.test(src[i + 1] ?? '')) {
+      buf += src[i + 1];
+      i += 2;
+      continue;
+    }
+    if (src.startsWith('**', i) && (bold ? canClose(i) : canOpen(i, '**'))) {
       flush();
       bold = !bold;
       i += 2;
-    } else if (src[i] === '*') {
+      continue;
+    }
+    if (ch === '*' && !src.startsWith('**', i) && (italic ? canClose(i) : canOpen(i, '*'))) {
       flush();
       italic = !italic;
       i += 1;
-    } else {
-      buf += src[i++];
+      continue;
     }
+    buf += ch;
+    i += 1;
   }
   flush();
   return runs;
