@@ -91,6 +91,39 @@ test('typeset text: exact word spaces, nothing past the margins or into images',
   }
 });
 
+test('typesetting edge cases: long ingredient lists, tall images, missing images', async () => {
+  const r = await desktop.page.evaluate(async () => {
+    const T = await import('/typeset.js'), { parseRecipe } = await import('/recipe-md.js');
+    const tall = new Image();
+    tall.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="1000"><rect width="100" height="1000" fill="#ccc"/></svg>');
+    await tall.decode();
+    const ingredients = Array.from({ length: 90 }, (_, i) => `- ${i + 1} ingredient with a fairly long description to wrap`).join('\n');
+    const recipe = parseRecipe(`---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![tall](/tall.svg){width=100%}\n\n![gone](/missing.svg){width=50%}\n\n1. Step.\n`);
+    const loaded = await T.loadImages(recipe); // /tall.svg and /missing.svg both fail to load here
+    const images = new Map([...loaded, ['/tall.svg', tall]]);
+    const out = {};
+    for (const [name, tpl] of Object.entries(T.TEMPLATES)) {
+      const pages = T.typesetRecipe(recipe, tpl, images);
+      const bottom = tpl.page.height - tpl.page.margin.bottom, area = bottom - tpl.page.margin.top;
+      const texts = pages.flatMap((p) => p.items.filter((i) => i.type === 'text'));
+      const imgs = pages.flatMap((p) => p.items.filter((i) => i.type === 'image'));
+      out[name] = {
+        textBelowMargin: texts.filter((t) => t.y > bottom + 0.5).length,
+        ingredientsSet: texts.filter((t) => / ingredient with/.test(t.text) || /^\d+ ingredient/.test(t.text)).length >= 90,
+        tallFits: imgs.every((i) => i.h <= area + 0.01 && i.y + i.h <= bottom + 0.5),
+        images: imgs.length,
+      };
+    }
+    return out;
+  });
+  for (const [name, x] of Object.entries(r)) {
+    assert.equal(x.textBelowMargin, 0, `${name}: text below the bottom margin`);
+    assert.ok(x.ingredientsSet, `${name}: every ingredient is set`);
+    assert.ok(x.tallFits, `${name}: tall image scaled to the text area`);
+    assert.equal(x.images, 1, `${name}: the missing image is skipped, the tall one placed`);
+  }
+});
+
 test('page turns match the static book exactly at both ends (no shadow snap)', async () => {
   const rows = await desktop.page.evaluate(() => {
     const b = window.book();

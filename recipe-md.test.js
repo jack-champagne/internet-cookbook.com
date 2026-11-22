@@ -18,6 +18,16 @@ test('parseInline: bold, italic and plain runs', () => {
   ]);
 });
 
+test('parseInline: stray, unmatched and escaped markers stay literal', () => {
+  const plain = (src) => parseInline(src).map((r) => (r.bold ? `<b>${r.text}</b>` : r.italic ? `<i>${r.text}</i>` : r.text)).join('');
+  assert.equal(plain('2 * 3 = 6'), '2 * 3 = 6');
+  assert.equal(plain('a *lonely star'), 'a *lonely star');
+  assert.equal(plain('not \\*italic\\*'), 'not *italic*');
+  assert.equal(plain('**bold** and *italic* and **unclosed'), '<b>bold</b> and <i>italic</i> and **unclosed');
+  assert.equal(plain('* not a list marker here *'), '* not a list marker here *');
+  assert.equal(plain('**Make the mash.** Boil'), '<b>Make the mash.</b> Boil');
+});
+
 test('parseRecipe: front matter, block types and list continuation lines', () => {
   const r = parseRecipe(`---
 title: "Test Pie"
