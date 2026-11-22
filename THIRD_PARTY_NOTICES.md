@@ -22,6 +22,12 @@ reproduced in the same `LICENSE` file:
   © Unicode, Inc. and others; © International Business Machines Corporation
   and others.
 
+## js-yaml 5.5.0 — YAML parsing for recipe headers
+
+- Location: `public/vendor/js-yaml/`
+- Licence: MIT, © 2011-2015 Vitaly Puzrin
+- Full text: [`public/vendor/js-yaml/LICENSE`](public/vendor/js-yaml/LICENSE)
+
 ## Fonts
 
 Served as Latin subsets in WOFF2. All are licensed under the SIL Open Font
