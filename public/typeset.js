@@ -22,10 +22,22 @@ import {
 // Templates (all measurements in points)
 // ---------------------------------------------------------------------------
 
-const ink = '#2b2925', muted = '#8a7f6c', rule = '#d9d1c1';
-const CRIMSON = '"Crimson Pro"', CORMORANT = '"Cormorant Garamond"', CAVEAT = '"Caveat"';
+const ink = '#2b2925',
+  muted = '#8a7f6c',
+  rule = '#d9d1c1';
+const CRIMSON = '"Crimson Pro"',
+  CORMORANT = '"Cormorant Garamond"',
+  CAVEAT = '"Caveat"';
 
-const type = (size, leading, more = {}) => ({ family: CRIMSON, weight: 400, boldWeight: 600, size, leading, color: ink, ...more });
+const type = (size, leading, more = {}) => ({
+  family: CRIMSON,
+  weight: 400,
+  boldWeight: 600,
+  size,
+  leading,
+  color: ink,
+  ...more,
+});
 
 export const TEMPLATES = {
   /** The book: a standard 8 × 10 in cookbook trim. */
@@ -85,18 +97,20 @@ const FACES = [
 let fontsReady;
 /** Registers the book's fonts with document.fonts and waits until they load. */
 export function loadFonts() {
-  fontsReady ||= Promise.all(FACES.map(async ([family, url, desc]) => {
-    // Registered before loading: Safari otherwise keeps fallback-font widths.
-    const face = new FontFace(family.replace(/"/g, ''), `url(${url})`, desc);
-    document.fonts.add(face);
-    await face.load();
-  }));
+  fontsReady ||= Promise.all(
+    FACES.map(async ([family, url, desc]) => {
+      // Registered before loading: Safari otherwise keeps fallback-font widths.
+      const face = new FontFace(family.replace(/"/g, ''), `url(${url})`, desc);
+      document.fonts.add(face);
+      await face.load();
+    }),
+  );
   return fontsReady;
 }
 
 const fontOf = (st, run = {}, scale = 1) => {
   const italic = st.italic || run.italic;
-  const weight = run.bold ? st.boldWeight ?? 600 : st.weight;
+  const weight = run.bold ? (st.boldWeight ?? 600) : st.weight;
   return `${italic ? 'italic ' : ''}${weight} ${st.size * scale}px ${st.family}`;
 };
 
@@ -115,11 +129,14 @@ const MEASURE = 8;
  * right at the margin from poking past it. Invisible in ragged-right text.
  */
 const SLACK = 1;
-const measureItems = (runs, st) => runs.filter((r) => r.text).map((r) => ({
-  text: st.caps ? r.text.toUpperCase() : r.text,
-  font: fontOf(st, r, MEASURE),
-  ...(st.letterSpacing ? { letterSpacing: st.letterSpacing * MEASURE } : {}),
-}));
+const measureItems = (runs, st) =>
+  runs
+    .filter((r) => r.text)
+    .map((r) => ({
+      text: st.caps ? r.text.toUpperCase() : r.text,
+      font: fontOf(st, r, MEASURE),
+      ...(st.letterSpacing ? { letterSpacing: st.letterSpacing * MEASURE } : {}),
+    }));
 
 /** Where the baseline sits inside a line box of the style's leading. */
 /**
@@ -136,10 +153,12 @@ function baselineIn(st) {
     const ctx = document.createElement('canvas').getContext('2d');
     ctx.font = font;
     const t = ctx.measureText('Hxgy');
-    const ascent = t.fontBoundingBoxAscent, descent = t.fontBoundingBoxDescent;
-    m = Number.isFinite(ascent) && Number.isFinite(descent) && ascent > 0
-      ? { ascent: ascent / MEASURE / st.size, descent: descent / MEASURE / st.size }
-      : { ascent: 0.9, descent: 0.25 };
+    const ascent = t.fontBoundingBoxAscent,
+      descent = t.fontBoundingBoxDescent;
+    m =
+      Number.isFinite(ascent) && Number.isFinite(descent) && ascent > 0
+        ? { ascent: ascent / MEASURE / st.size, descent: descent / MEASURE / st.size }
+        : { ascent: 0.9, descent: 0.25 };
     metricsCache.set(font, m);
   }
   return (st.leading - (m.ascent + m.descent) * st.size) / 2 + m.ascent * st.size;
@@ -167,10 +186,14 @@ class Flow {
     this.y = this.box.top;
   }
 
-  fits(h) { return this.y + h <= this.box.bottom + 0.01; }
+  fits(h) {
+    return this.y + h <= this.box.bottom + 0.01;
+  }
 
   /** Vertical space, swallowed at the top of a page. */
-  space(h) { if (this.y > this.box.top + 0.01) this.y += h; }
+  space(h) {
+    if (this.y > this.box.top + 0.01) this.y += h;
+  }
 
   /** Horizontal span available to a line between y0 and y1, after floats. */
   span(y0, y1) {
@@ -189,7 +212,9 @@ class Flow {
     for (const f of this.page.floats) this.y = Math.max(this.y, f.y + f.h + f.gap);
   }
 
-  add(item) { this.page.items.push(item); }
+  add(item) {
+    this.page.items.push(item);
+  }
 }
 
 /**
@@ -203,7 +228,8 @@ function flowText(flow, runs, st, { indent = 0, hang = 0, onFirstLine, fixedSpan
   if (!items.length) return;
   const drawFont = runs.filter((r) => r.text).map((r) => fontOf(st, r));
   const prepared = prepareRichInline(items);
-  let cursor, first = true;
+  let cursor,
+    first = true;
   for (;;) {
     const lineFor = () => {
       const span = fixedSpan || flow.span(flow.y, flow.y + st.leading);
@@ -229,7 +255,18 @@ function flowText(flow, runs, st, { indent = 0, hang = 0, onFirstLine, fixedSpan
       // `cont`: drawn right after the previous run as actually rendered, plus
       // `gap`, so word spaces stay exact even where the device's text widths
       // differ slightly from the measured ones (font hinting varies by size).
-      if (text) flow.add({ type: 'text', x, y: baseline, text, font: drawFont[f.itemIndex], color: st.color, letterSpacing: st.letterSpacing, cont, gap });
+      if (text)
+        flow.add({
+          type: 'text',
+          x,
+          y: baseline,
+          text,
+          font: drawFont[f.itemIndex],
+          color: st.color,
+          letterSpacing: st.letterSpacing,
+          cont,
+          gap,
+        });
       cont = true;
       x += f.occupiedWidth / MEASURE;
     });
@@ -265,7 +302,8 @@ function flowIngredients(flow, items, st, cfg) {
   });
   // Split where the tallest column is shortest.
   const total = heights.reduce((a, b) => a + b, 0);
-  let best = { k: items.length, h: total }, acc = 0;
+  let best = { k: items.length, h: total },
+    acc = 0;
   heights.forEach((h, i) => {
     acc += h;
     const tallest = Math.max(acc, total - acc);
@@ -297,26 +335,33 @@ const pct = (v, of) => (typeof v === 'string' && v.endsWith('%') ? (parseFloat(v
  */
 export async function loadImages(recipe) {
   const map = new Map();
-  await Promise.all(recipe.blocks.filter((b) => b.type === 'image').map(async (b) => {
-    if (map.has(b.src)) return;
-    const img = new Image();
-    img.src = b.src;
-    map.set(b.src, img);
-    try {
-      await img.decode();
-    } catch {
-      map.delete(b.src);
-      console.warn(`Image could not be loaded and was left out: ${b.src}`);
-    }
-  }));
+  await Promise.all(
+    recipe.blocks
+      .filter((b) => b.type === 'image')
+      .map(async (b) => {
+        if (map.has(b.src)) return;
+        const img = new Image();
+        img.src = b.src;
+        map.set(b.src, img);
+        try {
+          await img.decode();
+        } catch {
+          map.delete(b.src);
+          console.warn(`Image could not be loaded and was left out: ${b.src}`);
+        }
+      }),
+  );
   return map;
 }
 
 function placeImage(flow, block, img) {
   if (!img) return; // failed to load; reported by loadImages
-  const a = block.attrs, { x0, x1, top, bottom } = flow.box, cw = x1 - x0;
+  const a = block.attrs,
+    { x0, x1, top, bottom } = flow.box,
+    cw = x1 - x0;
   const ratio = (img.naturalHeight || 1) / (img.naturalWidth || 1);
-  let w = pct(a.width ?? '100%', cw), h = w * ratio;
+  let w = pct(a.width ?? '100%', cw),
+    h = w * ratio;
   if (!a.decor && h > bottom - top) {
     // In-text images must fit the text area: scale down, keeping proportions.
     h = bottom - top;
@@ -327,9 +372,17 @@ function placeImage(flow, block, img) {
     const anchor = { x: x0, y: flow.y };
     flow.page.anchors.push(anchor);
     flow.add({
-      type: 'image', img, decor: true, anchor,
-      x: x0 + pct(a.x ?? '0%', cw), y: flow.y + parseFloat(a.y ?? 0), w, h,
-      rotate: parseFloat(a.rotate ?? 0), opacity: parseFloat(a.opacity ?? 1), layer: a.layer === 'below' ? 'below' : 'above',
+      type: 'image',
+      img,
+      decor: true,
+      anchor,
+      x: x0 + pct(a.x ?? '0%', cw),
+      y: flow.y + parseFloat(a.y ?? 0),
+      w,
+      h,
+      rotate: parseFloat(a.rotate ?? 0),
+      opacity: parseFloat(a.opacity ?? 1),
+      layer: a.layer === 'below' ? 'below' : 'above',
     });
   } else if (a.wrap && (a.place === 'left' || a.place === 'right')) {
     // In the text: a float that following lines wrap around.
@@ -354,16 +407,30 @@ function placeImage(flow, block, img) {
  */
 export function typesetRecipe(recipe, tpl, images) {
   const flow = new Flow(tpl);
-  const S = tpl.styles, { meta } = recipe;
+  const S = tpl.styles,
+    { meta } = recipe;
 
   // Header: chapter, title, lede, then the time/serving line between rules.
-  if (meta.chapter) { flowText(flow, [{ text: meta.chapter }], S.kicker); flow.y += 4; }
-  if (meta.title) { flowText(flow, [{ text: meta.title }], S.title); flow.y += 6; }
-  let seenHeading = false, metaDone = false;
+  if (meta.chapter) {
+    flowText(flow, [{ text: meta.chapter }], S.kicker);
+    flow.y += 4;
+  }
+  if (meta.title) {
+    flowText(flow, [{ text: meta.title }], S.title);
+    flow.y += 6;
+  }
+  let seenHeading = false,
+    metaDone = false;
   const metaLine = () => {
     if (metaDone) return;
     metaDone = true;
-    const parts = [['Serves', meta.serves], ['Prep', meta.prep], ['Cook', meta.cook]].filter(([, v]) => v).map(([k, v]) => `${k} ${v}`);
+    const parts = [
+      ['Serves', meta.serves],
+      ['Prep', meta.prep],
+      ['Cook', meta.cook],
+    ]
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k} ${v}`);
     if (!parts.length) return;
     const { x0, x1 } = flow.box;
     flow.y += 4;
@@ -377,18 +444,25 @@ export function typesetRecipe(recipe, tpl, images) {
 
   let lastStep = null;
   const placeStep = (runs, n) => {
-    const st = S.step, num = S.stepNumber;
+    const st = S.step,
+      num = S.stepNumber;
     flowText(flow, runs, st, {
       indent: tpl.steps.indent,
-      onFirstLine: (x0, baseline) => flow.add({ type: 'text', x: x0, y: baseline, text: `${n}`, font: fontOf(num), color: num.color }),
+      onFirstLine: (x0, baseline) =>
+        flow.add({ type: 'text', x: x0, y: baseline, text: `${n}`, font: fontOf(num), color: num.color }),
     });
     flow.y += st.spaceAfter;
   };
 
   for (const b of recipe.blocks) {
     if (b.type === 'paragraph') {
-      if (!seenHeading) { flowText(flow, b.runs, S.lede); flow.y += 4; }
-      else { flowText(flow, b.runs, S.body); flow.y += 6; }
+      if (!seenHeading) {
+        flowText(flow, b.runs, S.lede);
+        flow.y += 4;
+      } else {
+        flowText(flow, b.runs, S.body);
+        flow.y += 6;
+      }
     } else if (b.type === 'heading') {
       metaLine();
       seenHeading = true;
@@ -410,7 +484,8 @@ export function typesetRecipe(recipe, tpl, images) {
       continue; // keep lastStep for a note that directly follows
     } else if (b.type === 'note') {
       flow.clearFloats();
-      const { x0, x1 } = flow.box, indent = (x1 - x0) * tpl.note.indent;
+      const { x0, x1 } = flow.box,
+        indent = (x1 - x0) * tpl.note.indent;
       const prepared = prepareRichInline(measureItems(b.runs, S.note));
       const lines = measureRichInlineStats(prepared, (x1 - x0 - indent - SLACK) * MEASURE).lineCount;
       const height = 10 + lines * S.note.leading;
@@ -444,20 +519,64 @@ export function typesetRecipe(recipe, tpl, images) {
 const BOARD = { cloth: '#3d4a3a', title: '#efe6cf', subtitle: '#c8bf9f', frame: '#b9a067' };
 const ENDPAPER = { paper: '#cdd1bd', motif: '#8f987c' };
 
-const sprigItem = (art, x, y, w, extra = {}) => ({ type: 'image', img: art, x, y, w, h: w * art.naturalHeight / art.naturalWidth, ...extra });
+const sprigItem = (art, x, y, w, extra = {}) => ({
+  type: 'image',
+  img: art,
+  x,
+  y,
+  w,
+  h: (w * art.naturalHeight) / art.naturalWidth,
+  ...extra,
+});
 
 /** Outside of a cover board. side: 'front' (title) or 'back' (emblem + colophon). */
 export function boardPage(tpl, { side, title, subtitle, art, lines = [] }) {
-  const { width: W, height: H } = tpl.page, S = tpl.styles;
-  const items = [{ type: 'fill', color: BOARD.cloth }, { type: 'frame', inset: Math.round(W * 0.05), color: BOARD.frame }];
+  const { width: W, height: H } = tpl.page,
+    S = tpl.styles;
+  const items = [
+    { type: 'fill', color: BOARD.cloth },
+    { type: 'frame', inset: Math.round(W * 0.05), color: BOARD.frame },
+  ];
   if (side === 'front') {
     const big = { ...S.title, size: S.title.size * 1.25 };
-    items.push({ type: 'text', x: W / 2, y: H * 0.36, text: title, font: fontOf(big), color: BOARD.title, align: 'center' });
-    items.push({ type: 'text', x: W / 2, y: H * 0.36 + big.size * 0.9, text: subtitle, font: fontOf(S.lede), color: BOARD.subtitle, align: 'center' });
-    if (art) { const w = W * 0.42; items.push(sprigItem(art, (W - w) / 2, H * 0.56, w, { rotate: -8, tint: BOARD.title })); }
+    items.push({
+      type: 'text',
+      x: W / 2,
+      y: H * 0.36,
+      text: title,
+      font: fontOf(big),
+      color: BOARD.title,
+      align: 'center',
+    });
+    items.push({
+      type: 'text',
+      x: W / 2,
+      y: H * 0.36 + big.size * 0.9,
+      text: subtitle,
+      font: fontOf(S.lede),
+      color: BOARD.subtitle,
+      align: 'center',
+    });
+    if (art) {
+      const w = W * 0.42;
+      items.push(sprigItem(art, (W - w) / 2, H * 0.56, w, { rotate: -8, tint: BOARD.title }));
+    }
   } else {
-    if (art) { const w = W * 0.22; items.push(sprigItem(art, (W - w) / 2, H * 0.44, w, { rotate: -8, tint: BOARD.subtitle })); }
-    lines.forEach((text, i) => items.push({ type: 'text', x: W / 2, y: H * 0.56 + i * S.folio.leading * 1.3, text, font: fontOf(S.folio), color: BOARD.subtitle, align: 'center' }));
+    if (art) {
+      const w = W * 0.22;
+      items.push(sprigItem(art, (W - w) / 2, H * 0.44, w, { rotate: -8, tint: BOARD.subtitle }));
+    }
+    lines.forEach((text, i) =>
+      items.push({
+        type: 'text',
+        x: W / 2,
+        y: H * 0.56 + i * S.folio.leading * 1.3,
+        text,
+        font: fontOf(S.folio),
+        color: BOARD.subtitle,
+        align: 'center',
+      }),
+    );
   }
   return { items, floats: [], anchors: [] };
 }
@@ -467,7 +586,9 @@ export function endpaperPage(tpl, { art }) {
   const { width: W, height: H } = tpl.page;
   const items = [{ type: 'fill', color: ENDPAPER.paper }];
   if (art) {
-    const w = W / 5.5, stepX = W / 3.2, stepY = H / 6;
+    const w = W / 5.5,
+      stepX = W / 3.2,
+      stepY = H / 6;
     for (let row = -1, y = -stepY / 3; y < H; row++, y += stepY) {
       for (let x = (row % 2 ? stepX / 2 : 0) - w / 2; x < W; x += stepX) {
         items.push(sprigItem(art, x, y, w, { rotate: row % 2 ? 24 : -18, tint: ENDPAPER.motif, opacity: 0.55 }));
@@ -479,29 +600,50 @@ export function endpaperPage(tpl, { art }) {
 
 /** Title page: the first page of the contents, on the right. */
 export function titlePage(tpl, { title, subtitle }) {
-  const { width: W, height: H } = tpl.page, S = tpl.styles;
+  const { width: W, height: H } = tpl.page,
+    S = tpl.styles;
   return {
     items: [
       { type: 'text', x: W / 2, y: H * 0.42, text: title, font: fontOf(S.title), color: ink, align: 'center' },
       { type: 'rule', x: W * 0.42, y: H * 0.42 + S.title.size * 0.55, w: W * 0.16, color: rule },
-      { type: 'text', x: W / 2, y: H * 0.42 + S.title.size * 0.55 + S.lede.leading * 1.4, text: subtitle, font: fontOf(S.lede), color: muted, align: 'center' },
+      {
+        type: 'text',
+        x: W / 2,
+        y: H * 0.42 + S.title.size * 0.55 + S.lede.leading * 1.4,
+        text: subtitle,
+        font: fontOf(S.lede),
+        color: muted,
+        align: 'center',
+      },
     ],
-    floats: [], anchors: [],
+    floats: [],
+    anchors: [],
   };
 }
 
 export const blankPage = () => ({ items: [], floats: [], anchors: [] });
 
 export function platePage(tpl, { art, caption }) {
-  const { width: W, height: H } = tpl.page, S = tpl.styles;
-  const w = W * 0.78, h = w * art.naturalHeight / art.naturalWidth;
+  const { width: W, height: H } = tpl.page,
+    S = tpl.styles;
+  const w = W * 0.78,
+    h = (w * art.naturalHeight) / art.naturalWidth;
   const y = (H - h) / 2 - S.lede.size;
   return {
     items: [
       { type: 'image', img: art, x: (W - w) / 2, y, w, h },
-      { type: 'text', x: W / 2, y: y + h + S.lede.leading * 1.6, text: caption, font: fontOf(S.lede), color: muted, align: 'center' },
+      {
+        type: 'text',
+        x: W / 2,
+        y: y + h + S.lede.leading * 1.6,
+        text: caption,
+        font: fontOf(S.lede),
+        color: muted,
+        align: 'center',
+      },
     ],
-    floats: [], anchors: [],
+    floats: [],
+    anchors: [],
   };
 }
 
@@ -512,7 +654,8 @@ export function platePage(tpl, { art, caption }) {
 /** Line art recoloured to `color` (e.g. cream on a dark board), at device size. */
 const tintCache = new Map();
 function tinted(img, color, w, h) {
-  const cw = Math.max(1, Math.round(w)), ch = Math.max(1, Math.round(h));
+  const cw = Math.max(1, Math.round(w)),
+    ch = Math.max(1, Math.round(h));
   const key = `${img.src}|${color}|${cw}x${ch}`;
   let c = tintCache.get(key);
   if (!c) {
@@ -550,18 +693,23 @@ export function drawPage(ctx, page, tpl, { pageNumber, guides = false } = {}) {
   ctx.save();
   ctx.textBaseline = 'alphabetic';
   const layer = (it) => (it.layer === 'below' ? 0 : it.decor ? 2 : 1);
-  const ordered = page.items.map((it, i) => [it, i]).sort((a, b) => layer(a[0]) - layer(b[0]) || a[1] - b[1]).map(([it]) => it);
+  const ordered = page.items
+    .map((it, i) => [it, i])
+    .sort((a, b) => layer(a[0]) - layer(b[0]) || a[1] - b[1])
+    .map(([it]) => it);
   // Text is drawn at its real device size, not at layout size under a scaled
   // transform: canvas positions glyphs at the font's own size, so scaling up
   // small text magnifies its rounding into uneven letter and word spacing.
-  const m = ctx.getTransform(), s = m.a;
+  const m = ctx.getTransform(),
+    s = m.a;
   let lineEnd = 0; // where the previous run on this line really ended, in device px
   const text = (it) => {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, m.e, m.f);
     ctx.font = scaleFont(it.font, s);
     ctx.fillStyle = it.color;
-    const x = it.cont ? lineEnd + it.gap * s : it.x * s, y = it.y * s;
+    const x = it.cont ? lineEnd + it.gap * s : it.x * s,
+      y = it.y * s;
     if (it.letterSpacing) {
       const ls = it.letterSpacing * s;
       const width = [...it.text].reduce((w, ch) => w + ctx.measureText(ch).width + ls, -ls);
@@ -601,7 +749,14 @@ export function drawPage(ctx, page, tpl, { pageNumber, guides = false } = {}) {
   }
   if (page.folio && pageNumber) {
     const st = tpl.styles.folio;
-    text({ x: W / 2, y: H - tpl.page.margin.bottom / 2 + st.size / 3, text: String(pageNumber), font: fontOf(st), color: st.color, align: 'center' });
+    text({
+      x: W / 2,
+      y: H - tpl.page.margin.bottom / 2 + st.size / 3,
+      text: String(pageNumber),
+      font: fontOf(st),
+      color: st.color,
+      align: 'center',
+    });
   }
   if (guides) drawGuides(ctx, page, tpl);
   ctx.restore();
@@ -628,9 +783,12 @@ function drawGuides(ctx, page, tpl) {
     ctx.strokeRect(it.x, it.y, it.w, it.h);
     const a = it.anchor;
     ctx.beginPath();
-    ctx.moveTo(a.x - 5, a.y); ctx.lineTo(a.x + 5, a.y);
-    ctx.moveTo(a.x, a.y - 5); ctx.lineTo(a.x, a.y + 5);
-    ctx.moveTo(a.x, a.y); ctx.lineTo(it.x, it.y);
+    ctx.moveTo(a.x - 5, a.y);
+    ctx.lineTo(a.x + 5, a.y);
+    ctx.moveTo(a.x, a.y - 5);
+    ctx.lineTo(a.x, a.y + 5);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(it.x, it.y);
     ctx.stroke();
   }
   ctx.restore();

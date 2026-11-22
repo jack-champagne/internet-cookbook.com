@@ -10,14 +10,14 @@ Live at **[internet-cookbook.com](https://internet-cookbook.com)**.
 
 | Path | What it is |
 |---|---|
-| `public/crease.js` | Page-turning engine (geometry, shading, input) |
+| `public/crease.js`, `public/crease/` | Page-turning engine (`crease/geometry.js`: the fold geometry) |
 | `public/typeset.js`, `public/recipe-md.js` | Recipe parser and typesetter |
 | `public/index.html` | The book viewer |
 | `public/recipes/` | Recipes (Markdown) — **content** |
 | `public/art/` | Illustrations — **content** |
 | `public/fonts/`, `public/vendor/` | Third-party fonts and libraries |
 | `e2e/`, `*.test.js` | Browser and unit tests |
-| `docs/` | Design documents |
+| `docs/design/` | Design documents |
 | `NITS.md` | Audit backlog |
 
 ## Licensing
@@ -44,6 +44,24 @@ npx playwright install chromium   # once
 npm test                          # unit tests (Node)
 npm run test:e2e                  # browser tests (BROWSER=firefox|webkit to switch)
 ```
+
+## Code quality
+
+```sh
+npm run lint            # ESLint, Prettier check and TypeScript (JSDoc) type check
+npm run format          # apply Prettier formatting
+npm run test:coverage   # unit tests with a coverage report
+```
+
+`public/crease/geometry.js` and `public/recipe-md.js` are type-checked in
+strict mode from their JSDoc; extend `tsconfig.json`'s `files` as more modules
+gain types.
+
+### Note on npm install scripts
+
+npm blocks the install scripts of `esbuild` and `workerd` (dependencies of
+Wrangler). Static-asset deploys don't need them, and deploys and CI work with
+them blocked. Leave them blocked rather than allowing them.
 
 ## Previews and releases
 

@@ -17,16 +17,32 @@
  * x ∈ [0, W], y ∈ [0, H]. The renderer maps it onto either side of the spine.
  */
 
-
 import {
-  dist, lerp, clamp, easeInOut, easeOut, cubicBezier, circleIntersections,
-  clampToLens, clipHalfPlane, polygonArea, reflectionMatrix, computeFold,
+  dist,
+  lerp,
+  clamp,
+  easeInOut,
+  easeOut,
+  cubicBezier,
+  circleIntersections,
+  clampToLens,
+  clipHalfPlane,
+  polygonArea,
+  reflectionMatrix,
+  computeFold,
 } from './crease/geometry.js';
 
 // The geometry is part of crease.js's public API.
 export {
-  easeInOut, easeOut, cubicBezier, circleIntersections, clampToLens,
-  clipHalfPlane, polygonArea, reflectionMatrix, computeFold,
+  easeInOut,
+  easeOut,
+  cubicBezier,
+  circleIntersections,
+  clampToLens,
+  clipHalfPlane,
+  polygonArea,
+  reflectionMatrix,
+  computeFold,
 };
 
 // ---------------------------------------------------------------------------
@@ -34,34 +50,34 @@ export {
 // ---------------------------------------------------------------------------
 
 const DEFAULTS = {
-  pages: [],            // image URL | CanvasImageSource | (ctx, width, height) => void
+  pages: [], // image URL | CanvasImageSource | (ctx, width, height) => void
   pageWidth: 400,
   pageHeight: 520,
-  display: 'double',    // 'double' | 'single'
-  direction: 'ltr',     // 'ltr' | 'rtl'
-  hard: [],             // page numbers that are rigid boards, or (n) => boolean
-  padding: 32,          // canvas margin around the book (room for flaps/shadows)
-  grabZone: 48,         // px from the outer edge that starts a drag
-  cornerSize: 72,       // px from top/bottom that counts as a corner (hover peel)
-  peelSize: 40,         // how far a hovered corner lifts
-  duration: 700,        // ms for a full programmatic turn
+  display: 'double', // 'double' | 'single'
+  direction: 'ltr', // 'ltr' | 'rtl'
+  hard: [], // page numbers that are rigid boards, or (n) => boolean
+  padding: 32, // canvas margin around the book (room for flaps/shadows)
+  grabZone: 48, // px from the outer edge that starts a drag
+  cornerSize: 72, // px from top/bottom that counts as a corner (hover peel)
+  peelSize: 40, // how far a hovered corner lifts
+  duration: 700, // ms for a full programmatic turn
   paperColor: '#fdfcf8',
   shading: true,
   debug: false,
-  onTurn: null,         // (page) => void, after a turn completes
-  label: 'Book',        // accessible name prefix, e.g. "Book, pages 4–5 of 8"
-  keepPages: 4,         // rasterised pages kept within this distance of the current page
+  onTurn: null, // (page) => void, after a turn completes
+  label: 'Book', // accessible name prefix, e.g. "Book, pages 4–5 of 8"
+  keepPages: 4, // rasterised pages kept within this distance of the current page
   // Shadow and shading strengths (0-1 opacity); pass a partial object to tune.
   shadows: {
-    resting: 0.22,      // the book's drop shadow on the table
-    crease: 0.25,       // shadow the lifted flap casts by the crease, on page and table
-    flap: 0.18,         // drop shadow under the folded flap
-    curl: 0.22,         // dark band in the flap's crease
-    highlight: 0.16,    // light band where the flap curls toward the light
-    far: 0.05,          // slight darkening at the flap's far edge
-    gutter: 0.16,       // paper darkening into the binding
-    board: 0.35,        // drop shadow under a lifting hard cover
-    boardShade: 0.32,   // a hard cover darkening as it turns away from the light
+    resting: 0.22, // the book's drop shadow on the table
+    crease: 0.25, // shadow the lifted flap casts by the crease, on page and table
+    flap: 0.18, // drop shadow under the folded flap
+    curl: 0.22, // dark band in the flap's crease
+    highlight: 0.16, // light band where the flap curls toward the light
+    far: 0.05, // slight darkening at the flap's far edge
+    gutter: 0.16, // paper darkening into the binding
+    board: 0.35, // drop shadow under a lifting hard cover
+    boardShade: 0.32, // a hard cover darkening as it turns away from the light
   },
 };
 
@@ -73,10 +89,10 @@ export class Book {
     this.ctx = canvas.getContext('2d');
     this.opts = { ...DEFAULTS, ...options, shadows: { ...DEFAULTS.shadows, ...options.shadows } };
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.current = 1;   // page number the reader is on (spread = floor(current / 2) when double)
-    this.turn = null;   // active turn, see _turnSpec()
-    this.start = null;  // held point, page-local
-    this.point = null;  // dragged point, page-local (already constrained)
+    this.current = 1; // page number the reader is on (spread = floor(current / 2) when double)
+    this.turn = null; // active turn, see _turnSpec()
+    this.start = null; // held point, page-local
+    this.point = null; // dragged point, page-local (already constrained)
     this.mode = 'idle'; // idle | peel | drag | anim
     this._raf = 0;
     this.pages = this.opts.pages.map((src) => this._loadPage(src));
@@ -104,8 +120,12 @@ export class Book {
     return [v.left, v.right].filter((n) => n != null);
   }
 
-  next() { return this._auto('forward'); }
-  prev() { return this._auto('backward'); }
+  next() {
+    return this._auto('forward');
+  }
+  prev() {
+    return this._auto('backward');
+  }
 
   goTo(n) {
     this._cancel();
@@ -169,7 +189,8 @@ export class Book {
   _loadPage(src) {
     const page = { draw: null, canvas: null, flipped: null };
     const fit = (img) => (g, W, H) => {
-      const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+      const iw = img.naturalWidth || img.width,
+        ih = img.naturalHeight || img.height;
       const s = Math.min(W / iw, H / ih);
       g.drawImage(img, (W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s);
     };
@@ -190,7 +211,9 @@ export class Book {
   }
 
   _raster(page) {
-    const W = this.opts.pageWidth, H = this.opts.pageHeight, pr = this.dpr;
+    const W = this.opts.pageWidth,
+      H = this.opts.pageHeight,
+      pr = this.dpr;
     const c = document.createElement('canvas');
     c.width = Math.round(W * pr);
     c.height = Math.round(H * pr);
@@ -225,7 +248,9 @@ export class Book {
     this._pixelRatioQuery.addEventListener('change', this._onPixelRatio);
   }
 
-  _has(n) { return n != null && n >= 1 && n <= this.pages.length; }
+  _has(n) {
+    return n != null && n >= 1 && n <= this.pages.length;
+  }
 
   _isHard(n) {
     if (!this._has(n)) return false;
@@ -254,8 +279,12 @@ export class Book {
 
   // ----- layout & state ---------------------------------------------------
 
-  get double() { return this.opts.display === 'double'; }
-  get rtl() { return this.opts.direction === 'rtl'; }
+  get double() {
+    return this.opts.display === 'double';
+  }
+  get rtl() {
+    return this.opts.direction === 'rtl';
+  }
 
   _layout() {
     const { pageWidth: W, pageHeight: H, padding: pad } = this.opts;
@@ -315,7 +344,16 @@ export class Book {
         t = { side: 1, front: k, back: null, under: k + 1, opposite: null, commit: 'turned', next: k + 1 };
       } else if (dir === 'backward' && has(k - 1)) {
         // The previous page comes back in from beyond the spine and lays down.
-        t = { side: 1, front: k - 1, back: null, under: k, opposite: null, commit: 'flat', next: k - 1, holdsFold: true };
+        t = {
+          side: 1,
+          front: k - 1,
+          back: null,
+          under: k,
+          opposite: null,
+          commit: 'flat',
+          next: k - 1,
+          holdsFold: true,
+        };
       }
     }
     if (t) {
@@ -365,27 +403,33 @@ export class Book {
 
   /** Animate the held point to fully turned (goTurned) or back to flat. */
   _finish(goTurned, commit, ease = easeOut) {
-    const t = this.turn, S = this.start;
+    const t = this.turn,
+      S = this.start;
     const from = { ...this.point };
     const to = goTurned ? { x: -S.x, y: S.y } : { x: S.x, y: S.y };
     const span = dist(from, to) / (2 * this.W);
     // Arc the corner toward the middle of the page so it travels like paper, not a slider.
     const lift = (this.H / 2 - S.y) * 0.35 * Math.min(1, span);
-    const c1 = lerp(from, to, 1 / 3), c2 = lerp(from, to, 2 / 3);
+    const c1 = lerp(from, to, 1 / 3),
+      c2 = lerp(from, to, 2 / 3);
     c1.y += lift;
     c2.y += lift;
     this.mode = 'anim';
     const duration = reducedMotion() ? 0 : this.opts.duration * clamp(span, 0.25, 1);
-    this._animate(duration, (k) => {
-      this._setPoint(cubicBezier(from, c1, c2, to, ease(k)));
-      this.render();
-    }, () => {
-      if (commit) this.current = t.next;
-      this.turn = null;
-      this.mode = 'idle';
-      this.render();
-      if (commit) this.opts.onTurn?.(this.page);
-    });
+    this._animate(
+      duration,
+      (k) => {
+        this._setPoint(cubicBezier(from, c1, c2, to, ease(k)));
+        this.render();
+      },
+      () => {
+        if (commit) this.current = t.next;
+        this.turn = null;
+        this.mode = 'idle';
+        this.render();
+        if (commit) this.opts.onTurn?.(this.page);
+      },
+    );
   }
 
   _auto(dir) {
@@ -402,7 +446,8 @@ export class Book {
   }
 
   _peelPoint(k) {
-    const S = this.start, d = this.opts.peelSize;
+    const S = this.start,
+      d = this.opts.peelSize;
     const dy = S.y === 0 ? 1 : -1;
     const end = { x: S.x - d, y: S.y + dy * d };
     return cubicBezier(S, { x: S.x, y: S.y + dy * d * 0.6 }, { x: S.x - d * 0.6, y: end.y }, end, k);
@@ -411,13 +456,17 @@ export class Book {
   _peel(to) {
     const from = this._peelK ?? 0;
     this._peelTarget = to;
-    this._animate(240 * Math.abs(to - from), (k) => {
-      this._peelK = from + (to - from) * easeOut(k);
-      this._setPoint(this._peelPoint(this._peelK));
-      this.render();
-    }, () => {
-      if (to === 0) this._cancel(), this.render();
-    });
+    this._animate(
+      240 * Math.abs(to - from),
+      (k) => {
+        this._peelK = from + (to - from) * easeOut(k);
+        this._setPoint(this._peelPoint(this._peelK));
+        this.render();
+      },
+      () => {
+        if (to === 0) (this._cancel(), this.render());
+      },
+    );
   }
 
   // ----- input ------------------------------------------------------------
@@ -435,11 +484,16 @@ export class Book {
   }
 
   _onKey(e) {
-    const forward = this.rtl ? 'ArrowLeft' : 'ArrowRight', back = this.rtl ? 'ArrowRight' : 'ArrowLeft';
+    const forward = this.rtl ? 'ArrowLeft' : 'ArrowRight',
+      back = this.rtl ? 'ArrowRight' : 'ArrowLeft';
     const actions = {
-      [forward]: () => this.next(), PageDown: () => this.next(), ' ': () => this.next(),
-      [back]: () => this.prev(), PageUp: () => this.prev(),
-      Home: () => this.goTo(1), End: () => this.goTo(this.pages.length),
+      [forward]: () => this.next(),
+      PageDown: () => this.next(),
+      ' ': () => this.next(),
+      [back]: () => this.prev(),
+      PageUp: () => this.prev(),
+      Home: () => this.goTo(1),
+      End: () => this.goTo(this.pages.length),
     };
     const act = actions[e.key];
     if (!act || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -466,7 +520,8 @@ export class Book {
   /** What would a press at logical point p grab? */
   _hit(p) {
     const { grabZone: g, cornerSize: cs } = this.opts;
-    const W = this.W, H = this.H;
+    const W = this.W,
+      H = this.H;
     for (const dir of ['forward', 'backward']) {
       const t = this._turnSpec(dir);
       if (!t) continue;
@@ -563,7 +618,9 @@ export class Book {
     if (e.type === 'pointercancel') commit = false;
     else if (tapped) commit = true;
     else {
-      const s = this._samples, a = s[0], b = s[s.length - 1];
+      const s = this._samples,
+        a = s[0],
+        b = s[s.length - 1];
       const vx = b && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0; // px/ms, negative = toward turned
       const towardTurned = vx < -0.5 ? true : vx > 0.5 ? false : this._progress() > 0.5;
       commit = towardTurned === (t.commit === 'turned');
@@ -586,7 +643,12 @@ export class Book {
   }
 
   _rectPoly(r) {
-    return [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }];
+    return [
+      { x: r.x, y: r.y },
+      { x: r.x + r.w, y: r.y },
+      { x: r.x + r.w, y: r.y + r.h },
+      { x: r.x, y: r.y + r.h },
+    ];
   }
 
   /**
@@ -619,20 +681,38 @@ export class Book {
    */
   _restingShadow(polys) {
     if (!polys.length) return;
-    const ctx = this.ctx, m = ctx.getTransform();
-    const key = [m.a, m.b, m.c, m.d, m.e, m.f, this.opts.paperColor,
-      ...polys.flat().map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`)].join('|');
+    const ctx = this.ctx,
+      m = ctx.getTransform();
+    const key = [
+      m.a,
+      m.b,
+      m.c,
+      m.d,
+      m.e,
+      m.f,
+      this.opts.paperColor,
+      ...polys.flat().map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`),
+    ].join('|');
     let cache = this._restCache;
     if (!cache || cache.key !== key) {
       // Device-space bounds of the shapes plus room for the blur and offset.
       const margin = 48 * this.dpr;
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      let x0 = Infinity,
+        y0 = Infinity,
+        x1 = -Infinity,
+        y1 = -Infinity;
       for (const q of polys.flat()) {
-        const dx = m.a * q.x + m.c * q.y + m.e, dy = m.b * q.x + m.d * q.y + m.f;
-        x0 = Math.min(x0, dx); x1 = Math.max(x1, dx); y0 = Math.min(y0, dy); y1 = Math.max(y1, dy);
+        const dx = m.a * q.x + m.c * q.y + m.e,
+          dy = m.b * q.x + m.d * q.y + m.f;
+        x0 = Math.min(x0, dx);
+        x1 = Math.max(x1, dx);
+        y0 = Math.min(y0, dy);
+        y1 = Math.max(y1, dy);
       }
-      x0 = Math.max(0, Math.floor(x0 - margin)); y0 = Math.max(0, Math.floor(y0 - margin));
-      x1 = Math.min(this.canvas.width, Math.ceil(x1 + margin)); y1 = Math.min(this.canvas.height, Math.ceil(y1 + margin));
+      x0 = Math.max(0, Math.floor(x0 - margin));
+      y0 = Math.max(0, Math.floor(y0 - margin));
+      x1 = Math.min(this.canvas.width, Math.ceil(x1 + margin));
+      y1 = Math.min(this.canvas.height, Math.ceil(y1 + margin));
       const c = (cache && cache.canvas) || document.createElement('canvas');
       c.width = Math.max(1, x1 - x0);
       c.height = Math.max(1, y1 - y0);
@@ -640,7 +720,11 @@ export class Book {
       g.setTransform(m.a, m.b, m.c, m.d, m.e - x0, m.f - y0);
       const main = this.ctx;
       this.ctx = g; // draw with the shared helper into the cache
-      try { this._paper(polys); } finally { this.ctx = main; }
+      try {
+        this._paper(polys);
+      } finally {
+        this.ctx = main;
+      }
       cache = this._restCache = { key, canvas: c, x: x0, y: y0 };
     }
     ctx.save();
@@ -651,7 +735,8 @@ export class Book {
 
   /** Gutter shading: paper darkens as it curves into the binding. `span` is the page width as drawn. */
   _gutter(x0, dir, y, h, span = this.W) {
-    const ctx = this.ctx, gw = span * 0.07;
+    const ctx = this.ctx,
+      gw = span * 0.07;
     if (gw < 0.5) return;
     const g = ctx.createLinearGradient(x0, 0, x0 + dir * gw, 0);
     g.addColorStop(0, `rgba(0,0,0,${this.opts.shadows.gutter})`);
@@ -675,7 +760,7 @@ export class Book {
 
   render() {
     if (!this._ready) return;
-    if (this._pending) cancelAnimationFrame(this._pending), (this._pending = 0);
+    if (this._pending) (cancelAnimationFrame(this._pending), (this._pending = 0));
     this._draw();
     if (!this.turn) this._releaseDistant();
     const shown = this.visiblePages;
@@ -694,12 +779,16 @@ export class Book {
     const t = this.turn;
     if (!t) {
       const v = this._visible();
-      const resting = [[v.left, -1], [v.right, 1]].filter(([n]) => n != null);
+      const resting = [
+        [v.left, -1],
+        [v.right, 1],
+      ].filter(([n]) => n != null);
       this._restingShadow(resting.map(([, side]) => this._rectPoly(this.rects[side])));
       for (const [n, side] of resting) this._drawPage(n, this.rects[side]);
       return;
     }
-    const leafRect = this.rects[t.side], otherRect = this.rects[-t.side];
+    const leafRect = this.rects[t.side],
+      otherRect = this.rects[-t.side];
     const fold = t.hard ? null : computeFold(this.W, this.H, this.start, this.point);
     // Resting shadow: whatever lies flat on the table this frame. With nothing
     // under the leaf, its own flat part is what lies there.
@@ -726,14 +815,21 @@ export class Book {
   }
 
   _renderSoft(t, g) {
-    const ctx = this.ctx, s = t.side, W = this.W, H = this.H;
+    const ctx = this.ctx,
+      s = t.side,
+      W = this.W,
+      H = this.H;
     const toW = (q) => this._toWorld(q, s);
-    const flat = g.flat.map(toW), flap = g.flap.map(toW), folded = g.flapFolded.map(toW);
-    const mid = toW(g.mid), n = { x: s * g.normal.x, y: g.normal.y };
+    const flat = g.flat.map(toW),
+      flap = g.flap.map(toW),
+      folded = g.flapFolded.map(toW);
+    const mid = toW(g.mid),
+      n = { x: s * g.normal.x, y: g.normal.y };
     // Must reach 0 at progress 0 and 1, where the frame has to match the
     // static book exactly; the gain keeps a small hover peel visibly shaded.
     const shade = this.opts.shading ? Math.min(1, 2.5 * Math.sin(Math.PI * g.progress)) : 0;
-    const leafRect = this.rects[s], otherRect = this.rects[-s];
+    const leafRect = this.rects[s],
+      otherRect = this.rects[-s];
 
     // Shadow the lifted flap casts on the uncovered page *and* the table just
     // beyond it. Clipping to the page alone stopped the shadow dead at the
@@ -799,7 +895,8 @@ export class Book {
 
   /** Pose of a rigid board: cosine of its opening angle, which side it's over, its outline. */
   _boardPoly(t) {
-    const W = this.W, H = this.H;
+    const W = this.W,
+      H = this.H;
     const c = clamp(this.point.x / W, -1, 1);
     const sinA = Math.sqrt(1 - c * c);
     const over = c >= 0 ? t.side : -t.side;
@@ -827,15 +924,22 @@ export class Book {
    * no hard seams at corners.
    */
   _tableReach(g, tilt, F) {
-    const W = this.W, H = this.H;
-    const nx = Math.abs(g.normal.x), ny = Math.abs(g.normal.y);
+    const W = this.W,
+      H = this.H;
+    const nx = Math.abs(g.normal.x),
+      ny = Math.abs(g.normal.y);
     const side = (x, y) => (x - g.mid.x) * g.normal.x + (y - g.mid.y) * g.normal.y;
-    const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    const box = (x0, y0, x1, y1) => [
+      { x: x0, y: y0 },
+      { x: x1, y: y0 },
+      { x: x1, y: y1 },
+      { x: x0, y: y1 },
+    ];
     return [
-      clipHalfPlane(box(0, -F, W, 0), (q) => side(q.x, 0) + tilt * -q.y * nx),        // above the top edge
+      clipHalfPlane(box(0, -F, W, 0), (q) => side(q.x, 0) + tilt * -q.y * nx), // above the top edge
       clipHalfPlane(box(0, H, W, H + F), (q) => side(q.x, H) + tilt * (q.y - H) * nx), // below the bottom edge
       clipHalfPlane(box(W, 0, W + F, H), (q) => side(W, q.y) + tilt * (q.x - W) * ny), // beyond the outer edge
-      clipHalfPlane(box(W, -F, W + F, 0), (q) => side(W, 0) + tilt * ((q.x - W) * ny - q.y * nx)),     // outer-top corner
+      clipHalfPlane(box(W, -F, W + F, 0), (q) => side(W, 0) + tilt * ((q.x - W) * ny - q.y * nx)), // outer-top corner
       clipHalfPlane(box(W, H, W + F, H + F), (q) => side(W, H) + tilt * ((q.x - W) * ny + (q.y - H) * nx)), // outer-bottom corner
     ].filter((p) => p.length);
   }
@@ -856,7 +960,6 @@ export class Book {
     return c;
   }
 
-
   /**
    * Shadow the lifted flap casts on the table just beyond the uncovered page
    * edges (the page itself is shaded separately, crisply from the crease).
@@ -869,25 +972,38 @@ export class Book {
    * Masking needs destination-in, hence the offscreen buffers.
    */
   _tableShadow(g, side, from, dir, L, alpha) {
-    const ctx = this.ctx, W = this.W, H = this.H;
+    const ctx = this.ctx,
+      W = this.W,
+      H = this.H;
     const F = Math.min(14, this.opts.padding * 0.5); // fade distance from the page edge
     if (alpha <= 0.001 || F < 1) return;
     const m = ctx.getTransform();
     const toW = (q) => this._toWorld(q, side);
     // Device-space box around the strips (the untilted cut covers every layer):
     // all offscreen work is confined to it instead of two full-canvas passes.
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    let x0 = Infinity,
+      y0 = Infinity,
+      x1 = -Infinity,
+      y1 = -Infinity;
     for (const q of this._tableReach(g, 0, F).flat().map(toW)) {
-      const dx = m.a * q.x + m.c * q.y + m.e, dy = m.b * q.x + m.d * q.y + m.f;
-      x0 = Math.min(x0, dx); x1 = Math.max(x1, dx); y0 = Math.min(y0, dy); y1 = Math.max(y1, dy);
+      const dx = m.a * q.x + m.c * q.y + m.e,
+        dy = m.b * q.x + m.d * q.y + m.f;
+      x0 = Math.min(x0, dx);
+      x1 = Math.max(x1, dx);
+      y0 = Math.min(y0, dy);
+      y1 = Math.max(y1, dy);
     }
     if (x0 === Infinity) return;
-    x0 = Math.max(0, Math.floor(x0) - 2); y0 = Math.max(0, Math.floor(y0) - 2);
-    x1 = Math.min(this.canvas.width, Math.ceil(x1) + 2); y1 = Math.min(this.canvas.height, Math.ceil(y1) + 2);
-    const bw = x1 - x0, bh = y1 - y0;
+    x0 = Math.max(0, Math.floor(x0) - 2);
+    y0 = Math.max(0, Math.floor(y0) - 2);
+    x1 = Math.min(this.canvas.width, Math.ceil(x1) + 2);
+    y1 = Math.min(this.canvas.height, Math.ceil(y1) + 2);
+    const bw = x1 - x0,
+      bh = y1 - y0;
     if (bw <= 0 || bh <= 0) return;
     const begin = (key) => {
-      const c = this._scratch(key, bw, bh), x = c.getContext('2d');
+      const c = this._scratch(key, bw, bh),
+        x = c.getContext('2d');
       x.setTransform(1, 0, 0, 1, 0, 0);
       x.globalCompositeOperation = 'source-over';
       x.globalAlpha = 1;
@@ -919,10 +1035,11 @@ export class Book {
     // the full fade width F at d = taper × F. Tilts are bunched near -taper so
     // the wedge's outer boundary stays fairly sharp; d < 0 (beside the flat
     // part of the page) is never covered, so the shadow never looks bigger.
-    const layers = 12, taper = 5;
+    const layers = 12,
+      taper = 5;
     b.globalAlpha = 1 / layers;
     for (let i = 0; i < layers; i++) {
-      const tilt = -taper * (0.6 + 0.4 * (i + 0.5) / layers);
+      const tilt = -taper * (0.6 + (0.4 * (i + 0.5)) / layers);
       b.beginPath();
       for (const poly of this._tableReach(g, tilt, F)) {
         poly.map(toW).forEach((q, j) => (j ? b.lineTo(q.x, q.y) : b.moveTo(q.x, q.y)));
@@ -933,20 +1050,28 @@ export class Book {
 
     // 2. Distance-from-page mask: 1 at the edge, 0 at F.
     const [mask, k] = begin('_shadowMask');
-    const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    const box = (x0, y0, x1, y1) => [
+      { x: x0, y: y0 },
+      { x: x1, y: y0 },
+      { x: x1, y: y1 },
+      { x: x0, y: y1 },
+    ];
     const falloff = (gg) => {
       gg.addColorStop(0, '#000');
       gg.addColorStop(0.35, 'rgba(0,0,0,0.45)');
       gg.addColorStop(1, 'rgba(0,0,0,0)');
     };
     const ramp = (a, z, poly) => {
-      const A = toW(a), Z = toW(z), gg = k.createLinearGradient(A.x, A.y, Z.x, Z.y);
+      const A = toW(a),
+        Z = toW(z),
+        gg = k.createLinearGradient(A.x, A.y, Z.x, Z.y);
       falloff(gg);
       k.fillStyle = gg;
       fillPoly(k, poly);
     };
     const round = (corner, poly) => {
-      const C = toW(corner), gg = k.createRadialGradient(C.x, C.y, 0, C.x, C.y, F);
+      const C = toW(corner),
+        gg = k.createRadialGradient(C.x, C.y, 0, C.x, C.y, F);
       falloff(gg);
       k.fillStyle = gg;
       fillPoly(k, poly);
@@ -973,7 +1098,8 @@ export class Book {
 
   /** Rigid board: rotates about the spine, drawn foreshortened with fake perspective. */
   _renderHard(t) {
-    const ctx = this.ctx, H = this.H;
+    const ctx = this.ctx,
+      H = this.H;
     const { c, sinA, over: side, grow, poly } = this._boardPoly(t);
     const n = c >= 0 ? t.front : t.back;
     const w = this.W * Math.abs(c);
@@ -986,10 +1112,12 @@ export class Book {
     ctx.translate(this.spineX, 0);
     ctx.scale(side, 1);
     for (let i = 0; i < strips; i++) {
-      const u0 = i / strips, u1 = (i + 1) / strips;
-      const h = H * (1 + grow * (u0 + u1) / 2);
+      const u0 = i / strips,
+        u1 = (i + 1) / strips;
+      const h = H * (1 + (grow * (u0 + u1)) / 2);
       const y = this.top + (H - h) / 2;
-      const dx = u0 * w, dw = (u1 - u0) * w + (i < strips - 1 ? 0.6 : 0); // overlap hides seams
+      const dx = u0 * w,
+        dw = (u1 - u0) * w + (i < strips - 1 ? 0.6 : 0); // overlap hides seams
       if (src) {
         // Draw the whole page scaled to this strip's height, clipped to the
         // strip. Sampling a source sub-rectangle instead would resample edges
@@ -1023,9 +1151,12 @@ export class Book {
 
   _debugSoft(g, side) {
     if (!this.opts.debug) return;
-    const ctx = this.ctx, S = this.start;
-    const topEnd = { x: this.spineX, y: this.top }, botEnd = { x: this.spineX, y: this.top + this.H };
-    const sW = this._toWorld(S, side), pW = this._toWorld(g.point, side);
+    const ctx = this.ctx,
+      S = this.start;
+    const topEnd = { x: this.spineX, y: this.top },
+      botEnd = { x: this.spineX, y: this.top + this.H };
+    const sW = this._toWorld(S, side),
+      pW = this._toWorld(g.point, side);
     ctx.save();
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
@@ -1037,14 +1168,18 @@ export class Book {
     }
     ctx.setLineDash([]);
     if (g.flap.length) {
-      const m = this._toWorld(g.mid, side), d = { x: -g.normal.y * side, y: g.normal.x };
+      const m = this._toWorld(g.mid, side),
+        d = { x: -g.normal.y * side, y: g.normal.x };
       ctx.strokeStyle = 'crimson';
       ctx.beginPath();
       ctx.moveTo(m.x - d.x * 2000, m.y - d.y * 2000);
       ctx.lineTo(m.x + d.x * 2000, m.y + d.y * 2000);
       ctx.stroke();
     }
-    for (const [q, col] of [[sW, '#3a3'], [pW, '#d33']]) {
+    for (const [q, col] of [
+      [sW, '#3a3'],
+      [pW, '#d33'],
+    ]) {
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.arc(q.x, q.y, 4, 0, Math.PI * 2);

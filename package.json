@@ -1,19 +1,25 @@
 {
-  "name": "crease",
+  "name": "internet-cookbook",
   "version": "0.1.0",
-  "description": "Page-turning (flipbook) renderer for <canvas>",
+  "description": "A family cookbook typeset with Pretext and turned like paper with crease.js",
+  "private": true,
+  "license": "Apache-2.0",
   "type": "module",
-  "main": "public/crease.js",
-  "exports": "./public/crease.js",
   "scripts": {
     "test": "node --test",
     "test:e2e": "node --test --test-concurrency=1 'e2e/*.e2e.js'",
+    "test:coverage": "node --test --experimental-test-coverage",
+    "lint": "eslint . && prettier --check . && tsc -p tsconfig.json",
+    "format": "prettier --write .",
     "deploy": "wrangler deploy"
   },
-  "private": true,
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.15.0",
+    "globals": "17.14.0",
     "playwright": "1.65.1",
+    "prettier": "3.10.1",
+    "typescript": "7.0.2",
     "wrangler": "4.166.0"
-  },
-  "license": "Apache-2.0"
+  }
 }

@@ -5,7 +5,13 @@ import { parseRecipe, parseInline, parseAttrs } from './public/recipe-md.js';
 
 test('parseAttrs: flags, values and quoted values', () => {
   assert.deepEqual(parseAttrs('place=right width=40% wrap'), { place: 'right', width: '40%', wrap: true });
-  assert.deepEqual(parseAttrs('decor x=-5% y=-20 rotate=-12 caption="a b"'), { decor: true, x: '-5%', y: '-20', rotate: '-12', caption: 'a b' });
+  assert.deepEqual(parseAttrs('decor x=-5% y=-20 rotate=-12 caption="a b"'), {
+    decor: true,
+    x: '-5%',
+    y: '-20',
+    rotate: '-12',
+    caption: 'a b',
+  });
   assert.deepEqual(parseAttrs(''), {});
 });
 
@@ -19,7 +25,10 @@ test('parseInline: bold, italic and plain runs', () => {
 });
 
 test('parseInline: stray, unmatched and escaped markers stay literal', () => {
-  const plain = (src) => parseInline(src).map((r) => (r.bold ? `<b>${r.text}</b>` : r.italic ? `<i>${r.text}</i>` : r.text)).join('');
+  const plain = (src) =>
+    parseInline(src)
+      .map((r) => (r.bold ? `<b>${r.text}</b>` : r.italic ? `<i>${r.text}</i>` : r.text))
+      .join('');
   assert.equal(plain('2 * 3 = 6'), '2 * 3 = 6');
   assert.equal(plain('a *lonely star'), 'a *lonely star');
   assert.equal(plain('not \\*italic\\*'), 'not *italic*');
@@ -55,7 +64,10 @@ over two lines.
 ![](/art/sprig.svg){decor x=60%}
 `);
   assert.deepEqual(r.meta, { title: 'Test Pie', serves: 4 });
-  assert.deepEqual(r.blocks.map((b) => b.type), ['paragraph', 'heading', 'list', 'heading', 'image', 'list', 'note', 'image']);
+  assert.deepEqual(
+    r.blocks.map((b) => b.type),
+    ['paragraph', 'heading', 'list', 'heading', 'image', 'list', 'note', 'image'],
+  );
   assert.equal(r.blocks[0].runs[0].text, 'An intro over two lines.');
   assert.equal(r.blocks[2].ordered, false);
   assert.equal(r.blocks[2].items[1][0].text, '2 potatoes, peeled');
@@ -66,7 +78,9 @@ over two lines.
 });
 
 test('front matter is YAML: nested times, quoting, and clear errors', () => {
-  const r = parseRecipe('---\ntitle: "Pie: the sequel"\ntime: { prep: 20 min, cook: 1 hr }\ntags: [baked, lamb]\n---\nBody.\n');
+  const r = parseRecipe(
+    '---\ntitle: "Pie: the sequel"\ntime: { prep: 20 min, cook: 1 hr }\ntags: [baked, lamb]\n---\nBody.\n',
+  );
   assert.equal(r.meta.title, 'Pie: the sequel');
   assert.equal(r.meta.prep, '20 min');
   assert.equal(r.meta.cook, '1 hr');
@@ -75,7 +89,7 @@ test('front matter is YAML: nested times, quoting, and clear errors', () => {
   assert.throws(() => parseRecipe('---\n- a\n- b\n---\n'), /key: value/);
 });
 
-test('the shipped shepherd\'s pie recipe parses', () => {
+test("the shipped shepherd's pie recipe parses", () => {
   const r = parseRecipe(readFileSync(new URL('./public/recipes/shepherds-pie.md', import.meta.url), 'utf8'));
   assert.equal(r.meta.title, "Shepherd's Pie");
   const lists = r.blocks.filter((b) => b.type === 'list');

@@ -21,7 +21,8 @@ and you can make them entirely from the GitHub website or app.
 ## Adding art
 
 - Line art: SVG. Paintings or photos: PNG or WebP, at least 300 pixels per inch
-  at the size it will print.
+  at the size it will print, in the sRGB colour space (conversion for printing
+  happens at print time).
 - Put it in [`public/art/`](public/art/) and place it in a recipe with
   `![a short description](/art/your-file.svg){place=right width=40% wrap}`.
   The description is what screen readers and reader mode use, so describe what
