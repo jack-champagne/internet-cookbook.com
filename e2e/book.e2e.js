@@ -161,15 +161,17 @@ test('memory: only pages near the reader stay rasterised', async () => {
 test('reduced motion: turns complete without animating', async () => {
   const reduced = await openBook({ reducedMotion: 'reduce' });
   try {
-    const took = await reduced.page.evaluate(async () => {
+    // Count animation frames, not milliseconds: a jump completes on the next
+    // frame however slowly the engine draws; an animated turn takes dozens.
+    const frames = await reduced.page.evaluate(async () => {
       const b = window.book();
       b.goTo(1);
-      const t0 = performance.now();
       b.next();
-      while (b.visiblePages.join() !== '2,3') await new Promise(requestAnimationFrame);
-      return performance.now() - t0;
+      let n = 0;
+      while (b.visiblePages.join() !== '2,3' && n < 100) { await new Promise(requestAnimationFrame); n++; }
+      return n;
     });
-    assert.ok(took < 200, `turn took ${took.toFixed(0)} ms`);
+    assert.ok(frames <= 3, `turn took ${frames} animation frames`);
   } finally {
     await reduced.close();
   }
