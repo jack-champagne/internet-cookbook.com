@@ -1,6 +1,6 @@
-// Shared setup for browser tests: serves public/ to a headless Chromium
-// through request interception, so no local web server is needed.
-import { chromium } from 'playwright';
+// Shared setup for browser tests: serves public/ to a headless browser (Chromium,
+// Firefox or WebKit; see BROWSER) through request interception, no web server.
+import * as playwright from 'playwright';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
@@ -10,8 +10,19 @@ const TYPES = {
   '.woff2': 'font/woff2', '.md': 'text/markdown', '.txt': 'text/plain',
 };
 
+/** Browser engine under test: chromium (default), firefox or webkit (Safari's engine). */
+export const BROWSER = process.env.BROWSER || 'chromium';
+
+/** A phone-sized context. Firefox has no mobile emulation, so it gets only the screen. */
+export function phone() {
+  const iphone = playwright.devices['iPhone 13'];
+  if (BROWSER !== 'firefox') return iphone;
+  const { viewport, deviceScaleFactor, userAgent } = iphone;
+  return { viewport, deviceScaleFactor, userAgent };
+}
+
 export async function openBook(contextOptions = {}) {
-  const browser = await chromium.launch();
+  const browser = await playwright[BROWSER].launch();
   const context = await browser.newContext({ viewport: { width: 1400, height: 960 }, deviceScaleFactor: 1, ...contextOptions });
   await context.route('http://book.test/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
