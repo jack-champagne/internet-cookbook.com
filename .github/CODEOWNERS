@@ -1,0 +1,5 @@
+# Code, build and CI changes need the maintainer's review.
+# Content (recipes, art) is open to contributors and has no owner here.
+*                       @jack-champagne
+/public/recipes/
+/public/art/
