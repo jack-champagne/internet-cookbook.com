@@ -53,6 +53,18 @@ test('licences and 404 pages load cleanly under the site CSP', async () => {
   }
 });
 
+test('shadows option: a partial override keeps the other strengths', async () => {
+  const r = await desktop.page.evaluate(() => {
+    const b = window.book(), before = { ...b.opts.shadows };
+    b.set({ shadows: { flap: 0.1 } });
+    const after = { ...b.opts.shadows };
+    b.set({ shadows: before });
+    return { before, after };
+  });
+  assert.equal(r.after.flap, 0.1);
+  for (const k of Object.keys(r.before)) if (k !== 'flap') assert.equal(r.after[k], r.before[k], k);
+});
+
 test('next() turns the page', async () => {
   const { page } = desktop;
   await page.evaluate(() => window.book().goTo(1));
