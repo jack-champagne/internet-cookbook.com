@@ -30,7 +30,7 @@ soon · **[medium]** fix when touching the area · **[low]** polish.
 | Dev tools (Playwright, Wrangler, npm deps) | npm | Apache-2.0 / MIT / others | None: not shipped to readers | ✅ |
 
 History check: every path ever committed is listed above; no third-party
-code or images remain in any branch. No third-party page-turning code (studied for research only) was ever copied exist in the tree or history.
+code or images remain in any branch. No third-party page-turning code (studied for research only) was ever copied into the tree or its history.
 
 ### Findings
 
