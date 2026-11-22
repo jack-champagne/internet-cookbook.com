@@ -3,10 +3,14 @@
   "name": "internet-cookbook",
   "compatibility_date": "2026-11-20",
   // Static site only: no Worker script, Cloudflare serves ./public directly.
-  "assets": { "directory": "./public" },
+  "assets": { "directory": "./public", "not_found_handling": "404-page" },
   // Preview URLs (pr-<n>, draft) live on workers.dev; the live site is the
   // custom domain below and only changes on a tagged release.
   "workers_dev": true,
   "preview_urls": true,
-  "routes": [{ "pattern": "internet-cookbook.com", "custom_domain": true }]
+  "routes": [
+    { "pattern": "internet-cookbook.com", "custom_domain": true },
+    // Serves the same site; pages declare internet-cookbook.com as canonical.
+    { "pattern": "www.internet-cookbook.com", "custom_domain": true }
+  ]
 }
