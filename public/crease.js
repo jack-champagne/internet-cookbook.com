@@ -17,130 +17,17 @@
  * x ∈ [0, W], y ∈ [0, H]. The renderer maps it onto either side of the spine.
  */
 
-// ---------------------------------------------------------------------------
-// Geometry (pure, DOM-free — see crease.test.js)
-// ---------------------------------------------------------------------------
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+import {
+  dist, lerp, clamp, easeInOut, easeOut, cubicBezier, circleIntersections,
+  clampToLens, clipHalfPlane, polygonArea, reflectionMatrix, computeFold,
+} from './crease/geometry.js';
 
-export const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-export const easeOut = (t) => 1 - Math.pow(1 - t, 3);
-
-/** Point on the cubic Bezier p0..p3 at parameter t ∈ [0, 1]. */
-export function cubicBezier(p0, p1, p2, p3, t) {
-  const u = 1 - t;
-  const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
-  return {
-    x: a * p0.x + b * p1.x + c * p2.x + d * p3.x,
-    y: a * p0.y + b * p1.y + c * p2.y + d * p3.y,
-  };
-}
-
-function projectToCircle(p, c, r) {
-  const d = dist(p, c);
-  if (d < 1e-12) return { x: c.x + r, y: c.y };
-  return { x: c.x + ((p.x - c.x) * r) / d, y: c.y + ((p.y - c.y) * r) / d };
-}
-
-/** Intersection points of two circles (0 or 2 points). */
-export function circleIntersections(a, ra, b, rb) {
-  const d = dist(a, b);
-  if (d < 1e-12 || d > ra + rb || d < Math.abs(ra - rb)) return [];
-  const along = (ra * ra - rb * rb + d * d) / (2 * d);
-  const h = Math.sqrt(Math.max(0, ra * ra - along * along));
-  const ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
-  const mx = a.x + ux * along, my = a.y + uy * along;
-  return [
-    { x: mx - uy * h, y: my + ux * h },
-    { x: mx + uy * h, y: my - ux * h },
-  ];
-}
-
-/**
- * Nearest point to p inside disc(a, ra) ∩ disc(b, rb).
- * The nearest point of a lens is either p itself, p projected onto one arc
- * (if that lands inside the other disc), or one of the lens's two tips.
- */
-export function clampToLens(p, a, ra, b, rb, tol = 1e-6) {
-  const inside = (q) => dist(q, a) <= ra + tol && dist(q, b) <= rb + tol;
-  if (inside(p)) return { x: p.x, y: p.y };
-  const candidates = [
-    projectToCircle(p, a, ra),
-    projectToCircle(p, b, rb),
-    ...circleIntersections(a, ra, b, rb),
-  ].filter(inside);
-  if (!candidates.length) return projectToCircle(p, a, ra); // discs don't overlap; can't happen when S is in both
-  let best = candidates[0];
-  for (const q of candidates) if (dist(q, p) < dist(best, p)) best = q;
-  return best;
-}
-
-/**
- * Sutherland–Hodgman clip of a convex polygon against one half-plane:
- * keeps the part where f(q) ≥ 0 (f must be affine). Near-duplicate vertices
- * are merged; returns [] when less than a triangle remains.
- */
-export function clipHalfPlane(poly, f, eps = 1e-6) {
-  const out = [];
-  for (let i = 0; i < poly.length; i++) {
-    const cur = poly[i], prev = poly[(i + poly.length - 1) % poly.length];
-    const fc = f(cur), fp = f(prev);
-    if ((fc >= 0) !== (fp >= 0)) out.push(lerp(prev, cur, fp / (fp - fc)));
-    if (fc >= 0) out.push(cur);
-  }
-  const merged = out.filter((q, i) => dist(q, out[(i + 1) % out.length]) > eps);
-  return merged.length >= 3 ? merged : [];
-}
-
-export function polygonArea(poly) {
-  let s = 0;
-  for (let i = 0; i < poly.length; i++) {
-    const a = poly[i], b = poly[(i + 1) % poly.length];
-    s += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(s) / 2;
-}
-
-/** Canvas transform [a, b, c, d, e, f] reflecting across the line through m with unit normal n. */
-export function reflectionMatrix(m, n) {
-  const k = 2 * (m.x * n.x + m.y * n.y);
-  return [1 - 2 * n.x * n.x, -2 * n.x * n.y, -2 * n.x * n.y, 1 - 2 * n.y * n.y, k * n.x, k * n.y];
-}
-
-/**
- * Fold a W×H page (spine at x = 0) so the held point `start` moves toward
- * `target`. Returns:
- *   point      – target constrained so the spine stays attached
- *   progress   – 0 when flat, 1 when fully turned over the spine
- *   flat       – polygon of the part that stays put
- *   flap       – polygon of the part that lifts (original position)
- *   flapFolded – the flap reflected across the crease (where it is drawn)
- *   mid/normal – crease line: through `mid`, unit `normal` pointing to the flap
- *   depth      – how far the flap reaches from the crease
- */
-export function computeFold(W, H, start, target) {
-  const top = { x: 0, y: 0 }, bottom = { x: 0, y: H };
-  const point = clampToLens(target, top, dist(top, start), bottom, dist(bottom, start));
-  const rect = [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: H }, { x: 0, y: H }];
-  const progress = start.x > 0 ? clamp((start.x - point.x) / (2 * start.x), 0, 1) : 0;
-  const dx = start.x - point.x, dy = start.y - point.y, len = Math.hypot(dx, dy);
-  if (len < 1e-6) {
-    return { point, progress: 0, flat: rect, flap: [], flapFolded: [], mid: point, normal: { x: 1, y: 0 }, depth: 0 };
-  }
-  const normal = { x: dx / len, y: dy / len };
-  const mid = lerp(start, point, 0.5);
-  const side = (q) => (q.x - mid.x) * normal.x + (q.y - mid.y) * normal.y;
-  const flat = clipHalfPlane(rect, (q) => -side(q));
-  const flap = clipHalfPlane(rect, side);
-  const reflect = (q) => {
-    const s = 2 * side(q);
-    return { x: q.x - s * normal.x, y: q.y - s * normal.y };
-  };
-  const depth = flap.reduce((m, q) => Math.max(m, side(q)), 0);
-  return { point, progress, flat, flap, flapFolded: flap.map(reflect), mid, normal, depth };
-}
+// The geometry is part of crease.js's public API.
+export {
+  easeInOut, easeOut, cubicBezier, circleIntersections, clampToLens,
+  clipHalfPlane, polygonArea, reflectionMatrix, computeFold,
+};
 
 // ---------------------------------------------------------------------------
 // Book: layout, rendering, interaction
@@ -164,6 +51,18 @@ const DEFAULTS = {
   onTurn: null,         // (page) => void, after a turn completes
   label: 'Book',        // accessible name prefix, e.g. "Book, pages 4–5 of 8"
   keepPages: 4,         // rasterised pages kept within this distance of the current page
+  // Shadow and shading strengths (0-1 opacity); pass a partial object to tune.
+  shadows: {
+    resting: 0.22,      // the book's drop shadow on the table
+    crease: 0.25,       // shadow the lifted flap casts by the crease, on page and table
+    flap: 0.18,         // drop shadow under the folded flap
+    curl: 0.22,         // dark band in the flap's crease
+    highlight: 0.16,    // light band where the flap curls toward the light
+    far: 0.05,          // slight darkening at the flap's far edge
+    gutter: 0.16,       // paper darkening into the binding
+    board: 0.35,        // drop shadow under a lifting hard cover
+    boardShade: 0.32,   // a hard cover darkening as it turns away from the light
+  },
 };
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -172,7 +71,7 @@ export class Book {
   constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.opts = { ...DEFAULTS, ...options };
+    this.opts = { ...DEFAULTS, ...options, shadows: { ...DEFAULTS.shadows, ...options.shadows } };
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.current = 1;   // page number the reader is on (spread = floor(current / 2) when double)
     this.turn = null;   // active turn, see _turnSpec()
@@ -247,7 +146,7 @@ export class Book {
   set(options) {
     const page = this.page;
     this._cancel();
-    Object.assign(this.opts, options);
+    Object.assign(this.opts, options, { shadows: { ...this.opts.shadows, ...options.shadows } });
     this.current = page;
     this._layout();
     this.render();
@@ -696,7 +595,7 @@ export class Book {
    * the book's resting shadow is drawn before any page so it never spills
    * onto a neighbouring page.
    */
-  _paper(polys, alpha = 0.22, blur = 18) {
+  _paper(polys, alpha = this.opts.shadows.resting, blur = 18) {
     if (!polys.length || alpha <= 0.001) return;
     const ctx = this.ctx;
     ctx.save();
@@ -755,7 +654,7 @@ export class Book {
     const ctx = this.ctx, gw = span * 0.07;
     if (gw < 0.5) return;
     const g = ctx.createLinearGradient(x0, 0, x0 + dir * gw, 0);
-    g.addColorStop(0, 'rgba(0,0,0,0.16)');
+    g.addColorStop(0, `rgba(0,0,0,${this.opts.shadows.gutter})`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.fillRect(dir > 0 ? x0 : x0 - gw, y, gw, h);
@@ -844,7 +743,7 @@ export class Book {
       // a small fold's whole uncovered corner sit at full darkness.
       const L = clamp(g.depth, W * 0.15, W * 0.3);
       const gr = ctx.createLinearGradient(mid.x, mid.y, mid.x + n.x * L, mid.y + n.y * L);
-      gr.addColorStop(0, `rgba(0,0,0,${0.25 * shade})`);
+      gr.addColorStop(0, `rgba(0,0,0,${this.opts.shadows.crease * shade})`);
       gr.addColorStop(1, 'rgba(0,0,0,0)');
       // On the page: crisp, starting exactly at the crease.
       ctx.save();
@@ -853,7 +752,7 @@ export class Book {
       ctx.fillStyle = gr;
       ctx.fillRect(leafRect.x, leafRect.y, W, H);
       ctx.restore();
-      this._tableShadow(g, s, mid, n, L, 0.25 * shade);
+      this._tableShadow(g, s, mid, n, L, this.opts.shadows.crease * shade);
     }
 
     // The part of the leaf that stays flat.
@@ -870,7 +769,7 @@ export class Book {
     // The flap: drop shadow, then the back of the page. The back is laid out
     // as it will rest on the other side of the spine; mirroring through the
     // spine and then through the crease carries it onto the folded flap.
-    this._paper([folded], 0.18 * shade, 24);
+    this._paper([folded], this.opts.shadows.flap * shade, 24);
     ctx.save();
     this._path(folded);
     ctx.clip();
@@ -883,10 +782,11 @@ export class Book {
     if (shade) {
       const L = Math.max(g.depth, 1);
       const gr = ctx.createLinearGradient(mid.x, mid.y, mid.x - n.x * L, mid.y - n.y * L);
-      gr.addColorStop(0, `rgba(0,0,0,${0.22 * shade})`);
-      gr.addColorStop(0.15, `rgba(255,255,255,${0.16 * shade})`);
+      const sh = this.opts.shadows;
+      gr.addColorStop(0, `rgba(0,0,0,${sh.curl * shade})`);
+      gr.addColorStop(0.15, `rgba(255,255,255,${sh.highlight * shade})`);
       gr.addColorStop(0.55, 'rgba(255,255,255,0)');
-      gr.addColorStop(1, `rgba(0,0,0,${0.05 * shade})`);
+      gr.addColorStop(1, `rgba(0,0,0,${sh.far * shade})`);
       ctx.save();
       this._path(folded);
       ctx.clip();
@@ -941,15 +841,21 @@ export class Book {
   }
 
   /** Offscreen canvas the size of the main one, reused across frames. */
-  _scratch(key) {
+  /**
+   * Offscreen canvas of at least w × h device pixels, reused across frames.
+   * It only grows (resizing a canvas reallocates and clears it), and callers
+   * use its top-left w × h region.
+   */
+  _scratch(key, w, h) {
     let c = this[key];
     if (!c) c = this[key] = document.createElement('canvas');
-    if (c.width !== this.canvas.width || c.height !== this.canvas.height) {
-      c.width = this.canvas.width;
-      c.height = this.canvas.height;
+    if (c.width < w || c.height < h) {
+      c.width = Math.max(c.width, Math.ceil(w));
+      c.height = Math.max(c.height, Math.ceil(h));
     }
     return c;
   }
+
 
   /**
    * Shadow the lifted flap casts on the table just beyond the uncovered page
@@ -981,16 +887,16 @@ export class Book {
     const bw = x1 - x0, bh = y1 - y0;
     if (bw <= 0 || bh <= 0) return;
     const begin = (key) => {
-      const c = this._scratch(key), x = c.getContext('2d');
+      const c = this._scratch(key, bw, bh), x = c.getContext('2d');
       x.setTransform(1, 0, 0, 1, 0, 0);
       x.globalCompositeOperation = 'source-over';
       x.globalAlpha = 1;
-      x.clearRect(x0, y0, bw, bh);
+      x.clearRect(0, 0, bw, bh);
       x.save(); // restored after compositing: clips must not accumulate across frames
       x.beginPath();
-      x.rect(x0, y0, bw, bh);
+      x.rect(0, 0, bw, bh);
       x.clip();
-      x.setTransform(m);
+      x.setTransform(m.a, m.b, m.c, m.d, m.e - x0, m.f - y0); // the buffer's origin is the box's corner
       return [c, x];
     };
     const fillPoly = (x, poly) => {
@@ -1055,13 +961,13 @@ export class Book {
     b.setTransform(1, 0, 0, 1, 0, 0);
     b.globalAlpha = 1;
     b.globalCompositeOperation = 'destination-in';
-    b.drawImage(mask, x0, y0, bw, bh, x0, y0, bw, bh);
+    b.drawImage(mask, 0, 0, bw, bh, 0, 0, bw, bh);
     b.globalCompositeOperation = 'source-over';
     b.restore();
     k.restore();
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(buf, x0, y0, bw, bh, x0, y0, bw, bh);
+    ctx.drawImage(buf, 0, 0, bw, bh, x0, y0, bw, bh);
     ctx.restore();
   }
 
@@ -1072,7 +978,7 @@ export class Book {
     const n = c >= 0 ? t.front : t.back;
     const w = this.W * Math.abs(c);
     // Extra shadow while lifted; zero when flat (the resting pass covers that).
-    this._paper([poly], 0.35 * sinA, 12 + 20 * sinA);
+    this._paper([poly], this.opts.shadows.board * sinA, 12 + 20 * sinA);
 
     const src = this._source(n, (side === -1) !== this.rtl);
     const strips = 32;
@@ -1104,7 +1010,7 @@ export class Book {
     ctx.restore();
     // Turning away from the light: darker toward the outer edge. One fill over
     // the whole board - per-strip fills double up where strips overlap.
-    const k = this.opts.shading ? (1 - Math.abs(c)) * 0.32 : 0;
+    const k = this.opts.shading ? (1 - Math.abs(c)) * this.opts.shadows.boardShade : 0;
     if (k > 0.001 && w > 0.5) {
       const gr = ctx.createLinearGradient(this.spineX, 0, poly[1].x, 0);
       gr.addColorStop(0, `rgba(0,0,0,${0.4 * k})`);
