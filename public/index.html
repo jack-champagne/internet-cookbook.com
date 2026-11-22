@@ -12,6 +12,8 @@
     button, select { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid #b9ab8f; background: #fdfcf8; color: inherit; }
     #status { min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
     #loading { color: #8a7f6c; }
+    #book:focus { outline: none; }
+    #book:focus-visible { outline: 2px solid #8a7f6c; outline-offset: 4px; border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -66,7 +68,14 @@
       const tplName = state.trim === 'auto' ? (phone ? 'phone' : 'book') : state.trim;
       const display = phone ? 'single' : 'double';
       const tpl = TEMPLATES[tplName];
-      const key = [tplName, display, state.guides, innerWidth, innerHeight].join('|');
+      // Page size on screen: as large as fits, keeping the trim's proportions.
+      const pad = phone ? 12 : 28;
+      const aspect = tpl.page.height / tpl.page.width;
+      const availW = (innerWidth - 2 * pad) / (display === 'double' ? 2 : 1);
+      const availH = innerHeight - 2 * pad - 90;
+      const pageWidth = Math.floor(Math.max(160, Math.min(availW, availH / aspect, 640)));
+      // Rebuild (re-typeset and re-rasterise) only when something visible changes.
+      const key = [tplName, display, state.guides, pageWidth].join('|');
       if (key === lastKey) return;
       lastKey = key;
       if (book) state.page = book.page;
@@ -93,13 +102,6 @@
         endpaperPage(tpl, { art: sprig }),
         boardPage(tpl, { side: 'back', art: sprig, lines: [title, `Typeset with Pretext · ${tpl.name}`] }),
       ];
-
-      // Page size on screen: as large as fits, keeping the trim's proportions.
-      const pad = phone ? 12 : 28;
-      const aspect = tpl.page.height / tpl.page.width;
-      const availW = (innerWidth - 2 * pad) / (display === 'double' ? 2 : 1);
-      const availH = innerHeight - 2 * pad - 90;
-      const pageWidth = Math.floor(Math.max(160, Math.min(availW, availH / aspect, 640)));
 
       book?.destroy();
       book = new Book(canvas, {
@@ -133,7 +135,8 @@
     document.getElementById('guides').onchange = (e) => { state.guides = e.target.checked; build(); };
     let resizeTimer;
     addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(build, 150); });
-    window.book = () => book;
+    // Exposed for the browser tests and for debugging (?debug), not for readers.
+    if (location.hostname === 'book.test' || new URLSearchParams(location.search).has('debug')) window.book = () => book;
   </script>
 </body>
 </html>

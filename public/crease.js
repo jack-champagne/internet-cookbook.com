@@ -162,7 +162,11 @@ const DEFAULTS = {
   shading: true,
   debug: false,
   onTurn: null,         // (page) => void, after a turn completes
+  label: 'Book',        // accessible name prefix, e.g. "Book, pages 4–5 of 8"
+  keepPages: 4,         // rasterised pages kept within this distance of the current page
 };
+
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export class Book {
   constructor(canvas, options = {}) {
@@ -179,6 +183,7 @@ export class Book {
     this.pages = this.opts.pages.map((src) => this._loadPage(src));
     this._layout();
     this._bind();
+    this._watchPixelRatio();
     this._ready = true;
     this.render();
   }
@@ -209,6 +214,35 @@ export class Book {
     this.render();
   }
 
+  /** Number of pages currently held as rasterised canvases (for tests and diagnostics). */
+  get rasterisedPages() {
+    return this.pages.filter((p) => p.canvas).length;
+  }
+
+  /**
+   * Testing hook: render a single frame of a turn without animating.
+   * `dir` is 'forward' or 'backward'; `start` and `point` are page-local
+   * ({x, y} with the spine at x = 0). Call debugFrame() with no arguments to
+   * return to the static book.
+   */
+  debugFrame(dir, start, point) {
+    this._cancel();
+    if (dir) {
+      const t = this._turnSpec(dir);
+      if (!t) return false;
+      this.turn = t;
+      this.start = { ...start };
+      this._setPoint(point);
+    }
+    this.render();
+    return true;
+  }
+
+  /** The turn that `next()`/`prev()` would perform, or null (read-only). */
+  turnFor(dir) {
+    return this._turnSpec(dir);
+  }
+
   /** Change display, direction, hard, shading, debug, padding, ... at runtime. */
   set(options) {
     const page = this.page;
@@ -222,40 +256,74 @@ export class Book {
   destroy() {
     this._cancel();
     for (const [type, fn] of this._listeners) this.canvas.removeEventListener(type, fn);
+    this._pixelRatioQuery?.removeEventListener('change', this._onPixelRatio);
+    for (const p of this.pages) p.canvas = p.flipped = null;
   }
 
   // ----- pages ------------------------------------------------------------
 
+  /**
+   * Pages are rasterised on demand (_source) and released when the reader is
+   * far away (_releaseDistant), so memory stays flat however long the book:
+   * an 8 × 10 page on a 2× screen is ~8 MB as a canvas.
+   */
   _loadPage(src) {
-    const page = { canvas: null, flipped: null };
-    const W = this.opts.pageWidth, H = this.opts.pageHeight, pr = this.dpr;
-    const raster = (draw) => {
-      const c = document.createElement('canvas');
-      c.width = Math.round(W * pr);
-      c.height = Math.round(H * pr);
-      const g = c.getContext('2d');
-      g.scale(pr, pr);
-      g.fillStyle = this.opts.paperColor;
-      g.fillRect(0, 0, W, H);
-      draw(g);
-      page.canvas = c;
-      page.flipped = null;
-      if (this._ready) this.render();
-    };
-    const fit = (img) => raster((g) => {
+    const page = { draw: null, canvas: null, flipped: null };
+    const fit = (img) => (g, W, H) => {
       const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
       const s = Math.min(W / iw, H / ih);
       g.drawImage(img, (W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s);
-    });
-    if (typeof src === 'function') raster((g) => src(g, W, H));
+    };
+    const ready = (draw) => {
+      page.draw = draw;
+      page.canvas = page.flipped = null;
+      if (this._ready) this.render();
+    };
+    if (typeof src === 'function') page.draw = src;
     else if (typeof src === 'string') {
       const img = new Image();
-      img.onload = () => fit(img);
+      img.onload = () => ready(fit(img));
       img.src = src;
     } else if (src instanceof HTMLImageElement && !src.complete) {
-      src.addEventListener('load', () => fit(src), { once: true });
-    } else if (src) fit(src);
+      src.addEventListener('load', () => ready(fit(src)), { once: true });
+    } else if (src) page.draw = fit(src);
     return page;
+  }
+
+  _raster(page) {
+    const W = this.opts.pageWidth, H = this.opts.pageHeight, pr = this.dpr;
+    const c = document.createElement('canvas');
+    c.width = Math.round(W * pr);
+    c.height = Math.round(H * pr);
+    const g = c.getContext('2d');
+    g.scale(pr, pr);
+    g.fillStyle = this.opts.paperColor;
+    g.fillRect(0, 0, W, H);
+    page.draw(g, W, H);
+    return c;
+  }
+
+  /** Drop the rasters of pages far from the current one; they redraw when needed. */
+  _releaseDistant() {
+    const keep = this.opts.keepPages;
+    this.pages.forEach((p, i) => {
+      if (p.canvas && Math.abs(i + 1 - this.current) > keep) p.canvas = p.flipped = null;
+    });
+  }
+
+  /** Redraw at the new pixel ratio when the window moves to another display or zooms. */
+  _watchPixelRatio() {
+    if (typeof matchMedia !== 'function') return;
+    this._onPixelRatio = () => {
+      this._pixelRatioQuery?.removeEventListener('change', this._onPixelRatio);
+      this.dpr = Math.min(2, window.devicePixelRatio || 1);
+      for (const p of this.pages) p.canvas = p.flipped = null;
+      this._layout();
+      this.render();
+      this._watchPixelRatio();
+    };
+    this._pixelRatioQuery = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    this._pixelRatioQuery.addEventListener('change', this._onPixelRatio);
   }
 
   _has(n) { return n != null && n >= 1 && n <= this.pages.length; }
@@ -269,7 +337,8 @@ export class Book {
   /** Rasterised page, mirrored horizontally when `flip` (for RTL / left-hinged strips). */
   _source(n, flip) {
     const page = this._has(n) ? this.pages[n - 1] : null;
-    if (!page?.canvas) return null;
+    if (!page?.draw) return null;
+    page.canvas ||= this._raster(page);
     if (!flip) return page.canvas;
     if (!page.flipped) {
       const c = document.createElement('canvas');
@@ -308,7 +377,11 @@ export class Book {
     c.style.width = `${this.width}px`;
     c.style.maxWidth = '100%';
     c.style.height = 'auto';
-    c.style.touchAction = 'none';
+    // Single-finger drags turn pages; two-finger pinch-zoom stays available.
+    c.style.touchAction = 'pinch-zoom';
+    c.tabIndex = 0;
+    c.setAttribute('role', 'application');
+    c.setAttribute('aria-roledescription', 'book');
     if (!this.double) this.current = Math.max(1, this.current);
   }
 
@@ -403,7 +476,8 @@ export class Book {
     c1.y += lift;
     c2.y += lift;
     this.mode = 'anim';
-    this._animate(this.opts.duration * clamp(span, 0.25, 1), (k) => {
+    const duration = reducedMotion() ? 0 : this.opts.duration * clamp(span, 0.25, 1);
+    this._animate(duration, (k) => {
       this._setPoint(cubicBezier(from, c1, c2, to, ease(k)));
       this.render();
     }, () => {
@@ -456,8 +530,22 @@ export class Book {
       ['pointerup', (e) => this._onUp(e)],
       ['pointercancel', (e) => this._onUp(e)],
       ['pointerleave', () => this._onLeave()],
+      ['keydown', (e) => this._onKey(e)],
     ];
     for (const [type, fn] of this._listeners) this.canvas.addEventListener(type, fn);
+  }
+
+  _onKey(e) {
+    const forward = this.rtl ? 'ArrowLeft' : 'ArrowRight', back = this.rtl ? 'ArrowRight' : 'ArrowLeft';
+    const actions = {
+      [forward]: () => this.next(), PageDown: () => this.next(), ' ': () => this.next(),
+      [back]: () => this.prev(), PageUp: () => this.prev(),
+      Home: () => this.goTo(1), End: () => this.goTo(this.pages.length),
+    };
+    const act = actions[e.key];
+    if (!act || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    act();
   }
 
   _toLogical(e) {
@@ -545,7 +633,7 @@ export class Book {
       if (e.pointerId === this._pointerId) this._drag(p);
       return;
     }
-    if (e.pointerType === 'touch' || this.mode === 'anim') return;
+    if (e.pointerType === 'touch' || this.mode === 'anim' || reducedMotion()) return;
     const hit = this._hit(p);
     this.canvas.style.cursor = hit ? 'grab' : '';
     const peel = hit?.corner ? hit : null;
@@ -689,6 +777,14 @@ export class Book {
   render() {
     if (!this._ready) return;
     if (this._pending) cancelAnimationFrame(this._pending), (this._pending = 0);
+    this._draw();
+    if (!this.turn) this._releaseDistant();
+    const shown = this.visiblePages;
+    const label = `${this.opts.label}, ${shown.length === 2 ? `pages ${shown[0]}–${shown[1]}` : `page ${shown[0] ?? this.current}`} of ${this.pages.length}`;
+    if (this.canvas.getAttribute('aria-label') !== label) this.canvas.setAttribute('aria-label', label);
+  }
+
+  _draw() {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.width, this.height);
