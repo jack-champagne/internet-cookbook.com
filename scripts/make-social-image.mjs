@@ -12,9 +12,21 @@ try {
     art.src = '/art/rosemary.svg';
     await art.decode();
     const base = T.TEMPLATES.book;
-    const tpl = { ...base, page: { ...base.page, width: 1200, height: 630 },
-      styles: { ...base.styles, title: { ...base.styles.title, size: 72 }, lede: { ...base.styles.lede, size: 26, leading: 32 } } };
-    const desc = T.boardPage(tpl, { side: 'front', title: 'Internet Cookbook', subtitle: 'Recipes set by hand, on the web', art });
+    const tpl = {
+      ...base,
+      page: { ...base.page, width: 1200, height: 630 },
+      styles: {
+        ...base.styles,
+        title: { ...base.styles.title, size: 72 },
+        lede: { ...base.styles.lede, size: 26, leading: 32 },
+      },
+    };
+    const desc = T.boardPage(tpl, {
+      side: 'front',
+      title: 'Internet Cookbook',
+      subtitle: 'Recipes set by hand, on the web',
+      art,
+    });
     const c = document.createElement('canvas');
     c.width = 1200;
     c.height = 630;

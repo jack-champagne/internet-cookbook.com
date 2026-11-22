@@ -5,26 +5,41 @@ import assert from 'node:assert/strict';
 import { openBook, phone as phoneContext } from './helpers.js';
 
 let desktop;
-before(async () => { desktop = await openBook(); });
-after(async () => { await desktop?.close(); });
+before(async () => {
+  desktop = await openBook();
+});
+after(async () => {
+  await desktop?.close();
+});
 
 test('desktop: loads without errors as a two-page book', async () => {
   assert.deepEqual(desktop.errors, []);
-  const info = await desktop.page.evaluate(() => ({ pages: window.book().pageCount, display: window.book().opts.display }));
+  const info = await desktop.page.evaluate(() => ({
+    pages: window.book().pageCount,
+    display: window.book().opts.display,
+  }));
   assert.equal(info.display, 'double');
   assert.ok(info.pages >= 4 && info.pages % 2 === 0, `even page count, got ${info.pages}`);
 });
 
 test('book structure: two-sided cover boards, contents start on a right page', async () => {
   const s = await desktop.page.evaluate(() => {
-    const b = window.book(), n = b.pageCount;
+    const b = window.book(),
+      n = b.pageCount;
     b.goTo(1);
     const closedFront = b.visiblePages;
     b.goTo(n);
     const closedBack = b.visiblePages;
     b.goTo(2);
     const opening = b.visiblePages;
-    return { n, hard: b.opts.hard, closedFront, closedBack, opening, status: document.getElementById('status').textContent };
+    return {
+      n,
+      hard: b.opts.hard,
+      closedFront,
+      closedBack,
+      opening,
+      status: document.getElementById('status').textContent,
+    };
   });
   assert.equal(s.n % 2, 0, 'even page count');
   assert.deepEqual(s.hard, [1, 2, s.n - 1, s.n], 'only the cover boards (both sides) are rigid');
@@ -38,7 +53,9 @@ test('the counter names every visible page', async () => {
   await page.evaluate(() => window.book().goTo(1));
   await page.click('#next');
   await page.waitForFunction(() => window.book().visiblePages.length === 2, null, { timeout: 5000 });
-  await page.waitForFunction(() => /^pages 2–3 of \d+$/.test(document.getElementById('status').textContent), null, { timeout: 5000 });
+  await page.waitForFunction(() => /^pages 2–3 of \d+$/.test(document.getElementById('status').textContent), null, {
+    timeout: 5000,
+  });
 });
 
 test('licences and 404 pages load cleanly under the site CSP', async () => {
@@ -55,7 +72,8 @@ test('licences and 404 pages load cleanly under the site CSP', async () => {
 
 test('shadows option: a partial override keeps the other strengths', async () => {
   const r = await desktop.page.evaluate(() => {
-    const b = window.book(), before = { ...b.opts.shadows };
+    const b = window.book(),
+      before = { ...b.opts.shadows };
     b.set({ shadows: { flap: 0.1 } });
     const after = { ...b.opts.shadows };
     b.set({ shadows: before });
@@ -74,40 +92,48 @@ test('next() turns the page', async () => {
 
 test('typeset text: exact word spaces, nothing past the margins or into images', async () => {
   const result = await desktop.page.evaluate(async () => {
-    const T = await import('/typeset.js'), { parseRecipe } = await import('/recipe-md.js');
+    const T = await import('/typeset.js'),
+      { parseRecipe } = await import('/recipe-md.js');
     const c = document.createElement('canvas').getContext('2d');
     const out = {};
     // Every recipe the test book contains (interim list until book.yaml).
     for (const file of ['shepherds-pie', 'hamburg-and-rice']) {
-    const recipe = parseRecipe(await (await fetch(`/recipes/${file}.md`)).text());
-    const images = await T.loadImages(recipe);
-    for (const edition of Object.keys(T.TEMPLATES)) {
-      const name = `${file} / ${edition}`;
-      const tpl = T.TEMPLATES[edition], pages = T.typesetRecipe(recipe, tpl, images);
-      const right = tpl.page.width - tpl.page.margin.right;
-      const width = (it) => { c.font = it.font.replace(/([\d.]+)px/, (_, n) => `${n * 3}px`); return c.measureText(it.text).width / 3; };
-      let pastMargin = 0, intoImage = 0, badSpaces = 0;
-      for (const pg of pages) {
-        let prevEnd = 0;
-        for (const it of pg.items.filter((i) => i.type === 'text')) {
-          if (it.cont) {
-            const x = prevEnd + it.gap;
-            if (it.gap !== 0 && (it.gap < 1 || it.gap > 4)) badSpaces++;
-            it.x = x;
+      const recipe = parseRecipe(await (await fetch(`/recipes/${file}.md`)).text());
+      const images = await T.loadImages(recipe);
+      for (const edition of Object.keys(T.TEMPLATES)) {
+        const name = `${file} / ${edition}`;
+        const tpl = T.TEMPLATES[edition],
+          pages = T.typesetRecipe(recipe, tpl, images);
+        const right = tpl.page.width - tpl.page.margin.right;
+        const width = (it) => {
+          c.font = it.font.replace(/([\d.]+)px/, (_, n) => `${n * 3}px`);
+          return c.measureText(it.text).width / 3;
+        };
+        let pastMargin = 0,
+          intoImage = 0,
+          badSpaces = 0;
+        for (const pg of pages) {
+          let prevEnd = 0;
+          for (const it of pg.items.filter((i) => i.type === 'text')) {
+            if (it.cont) {
+              const x = prevEnd + it.gap;
+              if (it.gap !== 0 && (it.gap < 1 || it.gap > 4)) badSpaces++;
+              it.x = x;
+            }
+            const end = it.x + width(it);
+            prevEnd = end;
+            if (end > right + 0.5) pastMargin++;
+            for (const f of pg.floats)
+              if (it.y > f.y && it.y - 8 < f.y + f.h && end > f.x - 1 && it.x < f.x + f.w) intoImage++;
           }
-          const end = it.x + width(it);
-          prevEnd = end;
-          if (end > right + 0.5) pastMargin++;
-          for (const f of pg.floats) if (it.y > f.y && it.y - 8 < f.y + f.h && end > f.x - 1 && it.x < f.x + f.w) intoImage++;
         }
+        // A page whose only text is a handwritten note means the note was orphaned.
+        const loneNotes = pages.filter((pg) => {
+          const t = pg.items.filter((i) => i.type === 'text');
+          return t.length > 0 && t.every((i) => i.font.includes('Caveat'));
+        }).length;
+        out[name] = { pages: pages.length, pastMargin, intoImage, badSpaces, loneNotes };
       }
-      // A page whose only text is a handwritten note means the note was orphaned.
-      const loneNotes = pages.filter((pg) => {
-        const t = pg.items.filter((i) => i.type === 'text');
-        return t.length > 0 && t.every((i) => i.font.includes('Caveat'));
-      }).length;
-      out[name] = { pages: pages.length, pastMargin, intoImage, badSpaces, loneNotes };
-    }
     }
     return out;
   });
@@ -122,19 +148,27 @@ test('typeset text: exact word spaces, nothing past the margins or into images',
 
 test('typesetting edge cases: long ingredient lists, tall images, missing images', async () => {
   const r = await desktop.page.evaluate(async () => {
-    const T = await import('/typeset.js'), { parseRecipe } = await import('/recipe-md.js');
-    const ingredients = Array.from({ length: 90 }, (_, i) => `- ${i + 1} ingredient with a fairly long description to wrap`).join('\n');
-    const recipe = parseRecipe(`---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![tall](/__fixtures/tall.svg){width=100%}\n\n![gone](/missing.svg){width=50%}\n\n1. Step.\n`);
+    const T = await import('/typeset.js'),
+      { parseRecipe } = await import('/recipe-md.js');
+    const ingredients = Array.from(
+      { length: 90 },
+      (_, i) => `- ${i + 1} ingredient with a fairly long description to wrap`,
+    ).join('\n');
+    const recipe = parseRecipe(
+      `---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![tall](/__fixtures/tall.svg){width=100%}\n\n![gone](/missing.svg){width=50%}\n\n1. Step.\n`,
+    );
     const images = await T.loadImages(recipe); // the tall fixture loads; /missing.svg doesn't
     const out = {};
     for (const [name, tpl] of Object.entries(T.TEMPLATES)) {
       const pages = T.typesetRecipe(recipe, tpl, images);
-      const bottom = tpl.page.height - tpl.page.margin.bottom, area = bottom - tpl.page.margin.top;
+      const bottom = tpl.page.height - tpl.page.margin.bottom,
+        area = bottom - tpl.page.margin.top;
       const texts = pages.flatMap((p) => p.items.filter((i) => i.type === 'text'));
       const imgs = pages.flatMap((p) => p.items.filter((i) => i.type === 'image'));
       out[name] = {
         textBelowMargin: texts.filter((t) => t.y > bottom + 0.5).length,
-        ingredientsSet: texts.filter((t) => / ingredient with/.test(t.text) || /^\d+ ingredient/.test(t.text)).length >= 90,
+        ingredientsSet:
+          texts.filter((t) => / ingredient with/.test(t.text) || /^\d+ ingredient/.test(t.text)).length >= 90,
         tallFits: imgs.every((i) => i.h <= area + 0.01 && i.y + i.h <= bottom + 0.5),
         images: imgs.length,
       };
@@ -167,15 +201,24 @@ test('page turns match the static book exactly at both ends (no shadow snap)', a
     };
     const out = [];
     for (const [label, pageNo, dir, y, hard] of [
-      ['soft forward', 2, 'forward', b.H], ['soft backward', 4, 'backward', b.H], ['soft edge grab', 2, 'forward', b.H / 2],
-      ['hard forward', 1, 'forward', b.H], ['hard backward', n, 'backward', b.H],
-      ['soft cover', 1, 'forward', b.H, []], ['soft last page', n, 'backward', b.H, []],
+      ['soft forward', 2, 'forward', b.H],
+      ['soft backward', 4, 'backward', b.H],
+      ['soft edge grab', 2, 'forward', b.H / 2],
+      ['hard forward', 1, 'forward', b.H],
+      ['hard backward', n, 'backward', b.H],
+      ['soft cover', 1, 'forward', b.H, []],
+      ['soft last page', n, 'backward', b.H, []],
     ]) {
       b.set({ hard: hard ?? [1, n] });
-      b.goTo(pageNo); b.render(); const before = grab();
-      const spec = b.turnFor(dir), S = { x: b.W, y };
-      const atStart = frame(dir, S, S), atEnd = frame(dir, S, { x: -b.W, y });
-      b.goTo(spec.next); const after = grab();
+      b.goTo(pageNo);
+      b.render();
+      const before = grab();
+      const spec = b.turnFor(dir),
+        S = { x: b.W, y };
+      const atStart = frame(dir, S, S),
+        atEnd = frame(dir, S, { x: -b.W, y });
+      b.goTo(spec.next);
+      const after = grab();
       out.push({ label, start: maxDiff(before, atStart), end: maxDiff(atEnd, after) });
     }
     b.set({ hard: [1, n] });
@@ -194,7 +237,14 @@ test('keyboard: arrows, Home and End turn pages', async () => {
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => window.book().visiblePages.join() === '2,3', null, { timeout: 5000 });
   await page.keyboard.press('End');
-  await page.waitForFunction(() => { const b = window.book(); return b.visiblePages.join() === String(b.pageCount); }, null, { timeout: 5000 });
+  await page.waitForFunction(
+    () => {
+      const b = window.book();
+      return b.visiblePages.join() === String(b.pageCount);
+    },
+    null,
+    { timeout: 5000 },
+  );
   await page.keyboard.press('Home');
   await page.waitForFunction(() => window.book().visiblePages.join() === '1', null, { timeout: 5000 });
 });
@@ -209,9 +259,13 @@ test('accessible name says which pages are showing', async () => {
 
 test('memory: only pages near the reader stay rasterised', async () => {
   const result = await desktop.page.evaluate(() => {
-    const b = window.book(), keep = b.opts.keepPages;
+    const b = window.book(),
+      keep = b.opts.keepPages;
     let max = 0;
-    for (let n = 1; n <= b.pageCount; n++) { b.goTo(n); max = Math.max(max, b.rasterisedPages); }
+    for (let n = 1; n <= b.pageCount; n++) {
+      b.goTo(n);
+      max = Math.max(max, b.rasterisedPages);
+    }
     return { max, limit: 2 * keep + 1 };
   });
   assert.ok(result.max <= result.limit, `${result.max} rasterised pages, limit ${result.limit}`);
@@ -227,7 +281,10 @@ test('reduced motion: turns complete without animating', async () => {
       b.goTo(1);
       b.next();
       let n = 0;
-      while (b.visiblePages.join() !== '2,3' && n < 100) { await new Promise(requestAnimationFrame); n++; }
+      while (b.visiblePages.join() !== '2,3' && n < 100) {
+        await new Promise(requestAnimationFrame);
+        n++;
+      }
       return n;
     });
     assert.ok(frames <= 3, `turn took ${frames} animation frames`);
@@ -240,7 +297,11 @@ test('portrait phone: single pages on the phone trim, no errors', async () => {
   const phone = await openBook(phoneContext());
   try {
     assert.deepEqual(phone.errors, []);
-    const info = await phone.page.evaluate(() => ({ display: window.book().opts.display, w: window.book().W, h: window.book().H }));
+    const info = await phone.page.evaluate(() => ({
+      display: window.book().opts.display,
+      w: window.book().W,
+      h: window.book().H,
+    }));
     assert.equal(info.display, 'single');
     assert.ok(Math.abs(info.h / info.w - 7.5 / 4.5) < 0.02, 'phone trim proportions');
   } finally {

@@ -1,7 +1,18 @@
 // The book viewer: loads the recipes, typesets them and opens the book.
 import { Book } from './crease.js';
 import { parseRecipe } from './recipe-md.js';
-import { TEMPLATES, loadFonts, loadImages, typesetRecipe, drawPage, boardPage, endpaperPage, titlePage, platePage, blankPage } from './typeset.js';
+import {
+  TEMPLATES,
+  loadFonts,
+  loadImages,
+  typesetRecipe,
+  drawPage,
+  boardPage,
+  endpaperPage,
+  titlePage,
+  platePage,
+  blankPage,
+} from './typeset.js';
 
 const canvas = document.getElementById('book');
 const status = document.getElementById('status');
@@ -12,10 +23,18 @@ let book, lastKey;
 // the left facing the recipe, so that recipe starts on a right-hand page.
 // (Interim list until book.yaml replaces this page; see the design spec.)
 const RECIPES = [
-  { src: '/recipes/shepherds-pie.md', plate: { art: '/art/shepherds-pie.svg', caption: 'Shepherd’s pie, fresh from the oven' } },
+  {
+    src: '/recipes/shepherds-pie.md',
+    plate: { art: '/art/shepherds-pie.svg', caption: 'Shepherd’s pie, fresh from the oven' },
+  },
   { src: '/recipes/hamburg-and-rice.md' },
 ];
-const decoded = async (src) => { const img = new Image(); img.src = src; await img.decode(); return img; };
+const decoded = async (src) => {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  return img;
+};
 const [recipes, sprig] = await Promise.all([
   Promise.all(RECIPES.map(async (r) => ({ ...r, recipe: parseRecipe(await (await fetch(r.src)).text()) }))),
   decoded('/art/rosemary.svg'),
@@ -50,7 +69,8 @@ function build() {
   // A real book: each cover is a board printed on both sides (outside +
   // endpaper). Contents start on page 3, a right-hand page, with the
   // title page; each plate sits on a left page facing its recipe.
-  const title = 'Internet Cookbook', subtitle = 'Recipes set by hand, on the web';
+  const title = 'Internet Cookbook',
+    subtitle = 'Recipes set by hand, on the web';
   const contents = [titlePage(tpl, { title, subtitle })];
   const nextPageIsLeft = () => (2 + contents.length + 1) % 2 === 0;
   for (const r of recipes) {
@@ -89,7 +109,10 @@ function build() {
 
 function update() {
   const shown = book.visiblePages;
-  status.textContent = shown.length === 2 ? `pages ${shown[0]}–${shown[1]} of ${book.pageCount}` : `page ${shown[0] ?? book.page} of ${book.pageCount}`;
+  status.textContent =
+    shown.length === 2
+      ? `pages ${shown[0]}–${shown[1]} of ${book.pageCount}`
+      : `page ${shown[0] ?? book.page} of ${book.pageCount}`;
 }
 
 build();
@@ -98,9 +121,18 @@ canvas.hidden = false;
 
 document.getElementById('prev').onclick = () => book.prev();
 document.getElementById('next').onclick = () => book.next();
-document.getElementById('trim').onchange = (e) => { state.trim = e.target.value; build(); };
-document.getElementById('guides').onchange = (e) => { state.guides = e.target.checked; build(); };
+document.getElementById('trim').onchange = (e) => {
+  state.trim = e.target.value;
+  build();
+};
+document.getElementById('guides').onchange = (e) => {
+  state.guides = e.target.checked;
+  build();
+};
 let resizeTimer;
-addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(build, 150); });
+addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(build, 150);
+});
 // Exposed for the browser tests and for debugging (?debug), not for readers.
 if (location.hostname === 'book.test' || new URLSearchParams(location.search).has('debug')) window.book = () => book;
