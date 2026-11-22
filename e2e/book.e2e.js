@@ -101,9 +101,11 @@ test('page turns match the static book exactly at both ends (no shadow snap)', a
       for (let i = 0; i < a.length; i++) max = Math.max(max, Math.abs(a[i] - c[i]));
       return max;
     };
-    const frame = (spec, start, point) => {
-      b.turn = spec; b.start = start; b._setPoint(point); b.render();
-      const img = grab(); b.turn = null; return img;
+    const frame = (dir, start, point) => {
+      b.debugFrame(dir, start, point);
+      const img = grab();
+      b.debugFrame();
+      return img;
     };
     const out = [];
     for (const [label, pageNo, dir, y, hard] of [
@@ -113,9 +115,9 @@ test('page turns match the static book exactly at both ends (no shadow snap)', a
     ]) {
       b.set({ hard: hard ?? [1, n] });
       b.goTo(pageNo); b.render(); const before = grab();
-      const spec = b._turnSpec(dir), S = { x: b.W, y };
-      const atStart = frame(spec, S, S), atEnd = frame(spec, S, { x: -b.W, y });
-      b.current = spec.next; b.render(); const after = grab();
+      const spec = b.turnFor(dir), S = { x: b.W, y };
+      const atStart = frame(dir, S, S), atEnd = frame(dir, S, { x: -b.W, y });
+      b.goTo(spec.next); const after = grab();
       out.push({ label, start: maxDiff(before, atStart), end: maxDiff(atEnd, after) });
     }
     b.set({ hard: [1, n] });
@@ -124,6 +126,53 @@ test('page turns match the static book exactly at both ends (no shadow snap)', a
   for (const r of rows) {
     assert.equal(r.start, 0, `${r.label}: snaps at the start of the turn`);
     assert.equal(r.end, 0, `${r.label}: snaps at the end of the turn`);
+  }
+});
+
+test('keyboard: arrows, Home and End turn pages', async () => {
+  const { page } = desktop;
+  await page.evaluate(() => window.book().goTo(1));
+  await page.focus('#book');
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => window.book().visiblePages.join() === '2,3', null, { timeout: 5000 });
+  await page.keyboard.press('End');
+  await page.waitForFunction(() => { const b = window.book(); return b.visiblePages.join() === String(b.pageCount); }, null, { timeout: 5000 });
+  await page.keyboard.press('Home');
+  await page.waitForFunction(() => window.book().visiblePages.join() === '1', null, { timeout: 5000 });
+});
+
+test('accessible name says which pages are showing', async () => {
+  const { page } = desktop;
+  await page.evaluate(() => window.book().goTo(4));
+  const label = await page.getAttribute('#book', 'aria-label');
+  assert.match(label, /^Book, pages 4–5 of \d+$/);
+  assert.equal(await page.getAttribute('#book', 'tabindex'), '0');
+});
+
+test('memory: only pages near the reader stay rasterised', async () => {
+  const result = await desktop.page.evaluate(() => {
+    const b = window.book(), keep = b.opts.keepPages;
+    let max = 0;
+    for (let n = 1; n <= b.pageCount; n++) { b.goTo(n); max = Math.max(max, b.rasterisedPages); }
+    return { max, limit: 2 * keep + 1 };
+  });
+  assert.ok(result.max <= result.limit, `${result.max} rasterised pages, limit ${result.limit}`);
+});
+
+test('reduced motion: turns complete without animating', async () => {
+  const reduced = await openBook({ reducedMotion: 'reduce' });
+  try {
+    const took = await reduced.page.evaluate(async () => {
+      const b = window.book();
+      b.goTo(1);
+      const t0 = performance.now();
+      b.next();
+      while (b.visiblePages.join() !== '2,3') await new Promise(requestAnimationFrame);
+      return performance.now() - t0;
+    });
+    assert.ok(took < 200, `turn took ${took.toFixed(0)} ms`);
+  } finally {
+    await reduced.close();
   }
 });
 
