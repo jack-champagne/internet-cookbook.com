@@ -89,7 +89,12 @@ test('typeset text: exact word spaces, nothing past the margins or into images',
           for (const f of pg.floats) if (it.y > f.y && it.y - 8 < f.y + f.h && end > f.x - 1 && it.x < f.x + f.w) intoImage++;
         }
       }
-      out[name] = { pages: pages.length, pastMargin, intoImage, badSpaces };
+      // A page whose only text is a handwritten note means the note was orphaned.
+      const loneNotes = pages.filter((pg) => {
+        const t = pg.items.filter((i) => i.type === 'text');
+        return t.length > 0 && t.every((i) => i.font.includes('Caveat'));
+      }).length;
+      out[name] = { pages: pages.length, pastMargin, intoImage, badSpaces, loneNotes };
     }
     }
     return out;
@@ -99,6 +104,7 @@ test('typeset text: exact word spaces, nothing past the margins or into images',
     assert.equal(r.pastMargin, 0, `${name}: text past the margin`);
     assert.equal(r.intoImage, 0, `${name}: text running into a wrapped image`);
     assert.equal(r.badSpaces, 0, `${name}: word spaces out of range`);
+    assert.equal(r.loneNotes, 0, `${name}: a note alone on a page`);
   }
 });
 

@@ -54,7 +54,7 @@ over two lines.
 
 ![](/art/sprig.svg){decor x=60%}
 `);
-  assert.deepEqual(r.meta, { title: 'Test Pie', serves: '4' });
+  assert.deepEqual(r.meta, { title: 'Test Pie', serves: 4 });
   assert.deepEqual(r.blocks.map((b) => b.type), ['paragraph', 'heading', 'list', 'heading', 'image', 'list', 'note', 'image']);
   assert.equal(r.blocks[0].runs[0].text, 'An intro over two lines.');
   assert.equal(r.blocks[2].ordered, false);
@@ -63,6 +63,16 @@ over two lines.
   assert.equal(r.blocks[5].ordered, true);
   assert.equal(r.blocks[5].items.length, 2);
   assert.equal(r.blocks[7].attrs.decor, true);
+});
+
+test('front matter is YAML: nested times, quoting, and clear errors', () => {
+  const r = parseRecipe('---\ntitle: "Pie: the sequel"\ntime: { prep: 20 min, cook: 1 hr }\ntags: [baked, lamb]\n---\nBody.\n');
+  assert.equal(r.meta.title, 'Pie: the sequel');
+  assert.equal(r.meta.prep, '20 min');
+  assert.equal(r.meta.cook, '1 hr');
+  assert.deepEqual(r.meta.tags, ['baked', 'lamb']);
+  assert.throws(() => parseRecipe('---\ntitle: [unclosed\n---\n'), /not valid YAML/);
+  assert.throws(() => parseRecipe('---\n- a\n- b\n---\n'), /key: value/);
 });
 
 test('the shipped shepherd\'s pie recipe parses', () => {

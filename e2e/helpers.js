@@ -8,7 +8,7 @@ import { extname, join } from 'node:path';
 const ROOT = new URL('../public/', import.meta.url).pathname;
 const FIXTURES = new URL('./fixtures/', import.meta.url).pathname;
 const TYPES = {
-  '.html': 'text/html', '.js': 'text/javascript', '.svg': 'image/svg+xml',
+  '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.svg': 'image/svg+xml',
   '.woff2': 'font/woff2', '.md': 'text/markdown', '.txt': 'text/plain',
   '.css': 'text/css', '.png': 'image/png', '': 'text/plain',
 };

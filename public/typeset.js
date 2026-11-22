@@ -375,6 +375,16 @@ export function typesetRecipe(recipe, tpl, images) {
     flow.y += 4;
   };
 
+  let lastStep = null;
+  const placeStep = (runs, n) => {
+    const st = S.step, num = S.stepNumber;
+    flowText(flow, runs, st, {
+      indent: tpl.steps.indent,
+      onFirstLine: (x0, baseline) => flow.add({ type: 'text', x: x0, y: baseline, text: `${n}`, font: fontOf(num), color: num.color }),
+    });
+    flow.y += st.spaceAfter;
+  };
+
   for (const b of recipe.blocks) {
     if (b.type === 'paragraph') {
       if (!seenHeading) { flowText(flow, b.runs, S.lede); flow.y += 4; }
@@ -390,24 +400,35 @@ export function typesetRecipe(recipe, tpl, images) {
     } else if (b.type === 'list' && !b.ordered) {
       flowIngredients(flow, b.items, S.body, tpl.ingredients);
     } else if (b.type === 'list') {
-      const st = S.step, num = S.stepNumber;
       b.items.forEach((runs, i) => {
-        if (!flow.fits(st.leading * 2)) flow.newPage(); // no lonely first lines
-        flowText(flow, runs, st, {
-          indent: tpl.steps.indent,
-          onFirstLine: (x0, baseline) => flow.add({ type: 'text', x: x0, y: baseline, text: `${i + 1}`, font: fontOf(num), color: num.color }),
-        });
-        flow.y += st.spaceAfter;
+        if (!flow.fits(S.step.leading * 2)) flow.newPage(); // no lonely first lines
+        // Remember where the last step began, so a following note can pull it
+        // onto the next page rather than sit there alone.
+        lastStep = { runs, number: i + 1, page: flow.page, items: flow.page.items.length, y: flow.y };
+        placeStep(runs, i + 1);
       });
+      continue; // keep lastStep for a note that directly follows
     } else if (b.type === 'note') {
       flow.clearFloats();
+      const { x0, x1 } = flow.box, indent = (x1 - x0) * tpl.note.indent;
+      const prepared = prepareRichInline(measureItems(b.runs, S.note));
+      const lines = measureRichInlineStats(prepared, (x1 - x0 - indent - SLACK) * MEASURE).lineCount;
+      const height = 10 + lines * S.note.leading;
+      if (!flow.fits(height) && lastStep && lastStep.page === flow.page && lastStep.y > flow.box.top + 0.01) {
+        // Keep the note with its step: set the step again at the top of the
+        // next page, followed by the note.
+        flow.page.items.length = lastStep.items;
+        flow.y = lastStep.y;
+        flow.newPage();
+        placeStep(lastStep.runs, lastStep.number);
+      }
       flow.space(10);
-      const { x0, x1 } = flow.box;
-      flowText(flow, b.runs, S.note, { indent: (x1 - x0) * tpl.note.indent });
+      flowText(flow, b.runs, S.note, { indent });
       flow.y += 6;
     } else if (b.type === 'image') {
       placeImage(flow, b, images.get(b.src));
     }
+    lastStep = null;
   }
   metaLine();
   return flow.pages.map((p) => ({ ...p, folio: true }));

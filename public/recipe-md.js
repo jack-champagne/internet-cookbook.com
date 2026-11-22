@@ -16,8 +16,12 @@
  * the text, `decor x=60% y=-20 width=30% rotate=-10 layer=below` for
  * decorative art positioned freely relative to its anchor.
  *
+ * The front matter is YAML, so nested values work:
+ *   time: { prep: 30 min, cook: 1 hr }
+ *
  * Output is content only - no layout decisions are made here.
  */
+import { load as loadYaml } from './vendor/js-yaml/js-yaml.mjs';
 
 const IMAGE = /^!\[([^\]]*)\]\(([^)\s]+)\)(?:\{([^}]*)\})?\s*$/;
 const HEADING = /^(#{1,3})\s+(.*)$/;
@@ -83,10 +87,18 @@ export function parseRecipe(src) {
   let body = src.replace(/\r\n?/g, '\n');
   const fm = /^---\n([\s\S]*?)\n---\n?/.exec(body);
   if (fm) {
-    for (const line of fm[1].split('\n')) {
-      const m = /^([\w-]+):\s*(.*)$/.exec(line.trim());
-      if (m) meta[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    let parsed;
+    try {
+      parsed = loadYaml(fm[1]);
+    } catch (e) {
+      throw new Error(`Recipe header is not valid YAML: ${e.message}`);
     }
+    if (parsed != null && (typeof parsed !== 'object' || Array.isArray(parsed))) {
+      throw new Error('Recipe header must be a set of "key: value" lines');
+    }
+    Object.assign(meta, parsed);
+    // Times may be flat (prep: 30 min) or grouped (time: { prep, cook, total }).
+    for (const k of ['prep', 'cook', 'total']) if (meta[k] == null && meta.time?.[k] != null) meta[k] = meta.time[k];
     body = body.slice(fm[0].length);
   }
 
