@@ -4,11 +4,11 @@ Full audit of the repository, its history and the deployed site, 2026-11-20.
 Every finding is listed, from blockers to polish. Each item says what is
 wrong, why it matters, and the fix, followed by its outcome (**→ …**).
 
-**Status (2026-11-21):** 52 of 60 items done or decided. One blocker remains:
-a text version of the book for reader modes and screen readers, which is the
-first deliverable of the design spec. The other open items are the spec's work
-(book.yaml build, frozen layout, theme.yaml, preflight), visual-regression
-tests, the family's own content, and a name check before printing.
+**Status (2026-11-22, 0.3.0):** 58 of 60 items done or decided. No blockers
+remain. The book is built from `book.yaml` and `theme.yaml`, with a reader-mode
+article at every address, frozen layouts and preflight. Two items are the
+owner's: the family's own recipes and art, and a formal name search before
+printing or selling (a preliminary check found no conflict).
 
 Severity: **[blocker]** must fix before the book is public · **[high]** fix
 soon · **[medium]** fix when touching the area · **[low]** polish.
@@ -21,13 +21,13 @@ soon · **[medium]** fix when touching the area · **[low]** polish.
 
 | Component | Origin | Licence | Obligations | Status |
 |---|---|---|---|---|
-| `public/crease.js`, `public/typeset.js`, `public/recipe-md.js`, `public/index.html`, tests, workflows, docs | Written for this project | **None yet** | — | ⚠ unlicensed |
-| `public/vendor/pretext/` (Pretext 1.0.0) | npm `@chenglou/pretext` | MIT, plus notices for code ported from Chromium (BSD-3-Clause), WebKit (BSD-2-Clause) and Unicode/ICU data (Unicode-3.0, ICU licence) | Keep `LICENSE` with the files (done) | ✅ |
-| Fonts: Cormorant Garamond, Crimson Pro, Caveat (Latin subsets, woff2) | Google Fonts | SIL OFL 1.1, no Reserved Font Names, so subsetting is allowed | Ship each `OFL-*.txt` with the fonts (done); never sell the fonts by themselves | ✅ |
-| `public/art/*.svg` | Drawn in code for this project (placeholders) | **None yet** | — | ⚠ unlicensed; see AI note below |
-| `public/recipes/shepherds-pie.md` | Written for this project (placeholder) | **None yet** | — | ⚠ unlicensed |
+| `src/` (crease.js, content loader, typesetter, preflight, HTML, viewer), `scripts/`, `site/static/`, tests, workflows, docs | Written for this project | Apache-2.0, © 2026 Jack Champagne | Keep `LICENSE` and `NOTICE` | ✅ |
+| `src/vendor/pretext/` (Pretext 1.0.0) | npm `@chenglou/pretext` | MIT, plus notices for code ported from Chromium (BSD-3-Clause), WebKit (BSD-2-Clause) and Unicode/ICU data (Unicode-3.0, ICU licence) | Keep `LICENSE` with the files (done). Build-time only: not served to readers | ✅ |
+| `src/vendor/js-yaml/` (js-yaml 5.5.0) | npm `js-yaml` | MIT | Keep `LICENSE` with the files (done). Build-time only | ✅ |
+| Fonts: Cormorant Garamond, Crimson Pro, Caveat (Latin subsets, woff2) | Google Fonts | SIL OFL 1.1, no Reserved Font Names, so subsetting is allowed | Ship each `OFL-*.txt` with the fonts (done, copied into every build); never sell the fonts by themselves | ✅ |
+| `books/internet-cookbook/` recipes, pages and `art/` (placeholders) | Written or drawn for this project with an AI assistant | CC0 1.0 | None; provenance in `CREDITS.md` | ✅ (to be replaced by the family's own) |
 | Original `bezier.js` / `bezier.html` (history only) | The repository owner | — | — | ✅ |
-| Dev tools (Playwright, Wrangler, npm deps) | npm | Apache-2.0 / MIT / others | None: not shipped to readers | ✅ |
+| Dev tools (Playwright, Wrangler, ESLint, Prettier, TypeScript, Readability) | npm | Apache-2.0 / MIT / others | None: not shipped to readers | ✅ |
 
 History check: every path ever committed is listed above; no third-party
 code or images remain in any branch. No third-party page-turning code (studied for research only) was ever copied into the tree or its history.
@@ -54,7 +54,7 @@ code or images remain in any branch. No third-party page-turning code (studied f
 - [x] **[high] One aggregated third-party notice file.** Add
   `THIRD_PARTY_NOTICES.md` listing Pretext (and its embedded Chromium, WebKit,
   Unicode/ICU notices) and the three fonts, linking to the licence files. Serve
-  it from the site and link it from the colophon page. **→ done in #7; served at /licenses.html since #8.**
+  it from the site and link it from the colophon page. **→ done in #7; served at /licenses.html since #8, at /licenses/ since 0.3.0.**
 - [x] **[high] Old commits with the magazine scans are still reachable on
   GitHub by ID** (`5ada2b6d4f61d2812446230f4904d9f903ef7e3d`,
   `fb62e2e6d2b5dd8a3f097b56885f451b45e757ce`). Ask GitHub Support to remove
@@ -67,16 +67,16 @@ code or images remain in any branch. No third-party page-turning code (studied f
   output may not attract copyright, so it can't be exclusively owned. Fine for
   placeholders; the family's real art and recipes will replace them. Record
   provenance for every asset going forward (who made it, when, from what) in
-  `books/<book>/CREDITS.md`. **→ done in #9 (CREDITS.md).**
+  `CREDITS.md`. **→ done in #9 (CREDITS.md).**
 - [x] **[medium] Recipe and image provenance rules for contributors.** Recipes
   as lists of ingredients aren't copyrightable, but their written methods,
   stories and photos are. Contributors must only add their own writing and
   art, or material with a compatible licence, credited in `CREDITS.md`. No
   images from web searches, stock sites or scans of books and magazines. **→ done in #7 (CONTRIBUTING).**
 - [ ] **[low] Name check.** Before printing or selling, check "Internet
-  Cookbook" doesn't clash with an existing trademark in publishing. **→ owner, before printing or selling.**
+  Cookbook" doesn't clash with an existing trademark in publishing. **→ preliminary check done 2026-11-22 (web and trademark-listing searches, not legal advice): no registered or pending "Internet Cookbook" mark or site found; nearby marks are generic ("Digital Cookbook", "My Cookbook", both cancelled; "Cookbook", live, Class 35). "crease.js" has no published package or library of that name (npm `crease` is an unrelated CSS tool, so publish as `crease.js` or a scoped name). Owner: a USPTO search (or a lawyer) before printing or selling.**
 
-### Choosing licences (decision needed)
+### Choosing licences (decided: Apache-2.0 for code, CC0 1.0 for content)
 
 Code — recommended: **Apache-2.0** (permissive like MIT, plus an explicit
 patent grant and a NOTICE mechanism that suits the bundled third-party
@@ -121,9 +121,9 @@ shareable while preventing someone selling them.
 
 ## 3. Accessibility and reader mode
 
-- [ ] **[blocker] The book is invisible to assistive technology and reader
+- [x] **[blocker] The book is invisible to assistive technology and reader
   modes**: canvas only, no text in the page. Fixed by the spec's article per
-  address. **→ keyboard, accessible name and reduced motion done in #5; the full text version is the spec's reader-mode articles.**
+  address. **→ done in 0.3.0: every address is a real HTML article (with schema.org Recipe data) below the book, kept in step as pages turn; Readability extracts each recipe in the browser tests. Keyboard, accessible name and reduced motion since #5.**
 - [x] **[high] No keyboard navigation**: arrow keys, Page Up/Down and Home/End
   should turn pages; the canvas needs focus handling. **→ done in #5.**
 - [x] **[high] No `prefers-reduced-motion` support**: turns should cross-fade
@@ -136,18 +136,18 @@ shareable while preventing someone selling them.
 
 ## 4. Architecture and code quality
 
-- [ ] **[high] The test page assembles the book in a one-off script**
-  (`public/index.html`). Replaced by `book.yaml` + build (spec). **→ planned: replaced by book.yaml and the build (design spec).**
+- [x] **[high] The test page assembles the book in a one-off script**
+  (`public/index.html`). Replaced by `book.yaml` + build (spec). **→ done in 0.3.0: `books/internet-cookbook/book.yaml` and `npm run build`.**
 - [x] **[medium] `public/crease.js` is ~1,000 lines mixing geometry, input,
   animation and rendering.** Split into modules (geometry, input, renderer,
   shadows) behind the same public API. **→ done in #10: geometry extracted to crease/geometry.js; input and rendering stay in one class for now.**
 - [x] **[medium] Private members used from outside**: tests call
   `_turnSpec` / `_setPoint`. Add a small documented testing hook
   (e.g. `book.debugFrame(dir, start, point)`). **→ done in #5 (debugFrame, turnFor).**
-- [ ] **[medium] Design values are hard-coded in JavaScript**: templates,
+- [x] **[medium] Design values are hard-coded in JavaScript**: templates,
   colours and board/endpaper design in `typeset.js`; shading constants in
   `crease.js`. Move design into `theme.yaml` (spec) and name the shading
-  constants as options. **→ shading strengths are a `shadows` option since #10; templates and colours move to theme.yaml with the design spec.**
+  constants as options. **→ shading strengths are a `shadows` option since #10; templates, colours, cover and endpaper design are in `theme.yaml` since 0.3.0.**
 - [x] **[medium] No type checking.** Add JSDoc types and `tsc --checkJs
   --noEmit` in CI; the geometry and layout data structures benefit most. **→ done in #11: strict JSDoc checking of crease/geometry.js and recipe-md.js (extend tsconfig.json as modules gain types).**
 - [x] **[medium] No lint or formatting.** Add ESLint (flat config) and
@@ -167,8 +167,8 @@ shareable while preventing someone selling them.
 - [x] **[high] Browser tests depend on the demo content** (shepherd's pie). A
   content edit by family could fail a code test. Use a fixture book under
   `e2e/fixtures/`; check real content with content rules (preflight) instead. **→ done in #6 and #8: edge cases use fixtures (e2e/fixtures); the all-recipes check stays as a content rule.**
-- [ ] **[medium] No visual regression tests.** Add screenshot comparisons of
-  key spreads and turn frames with a small tolerance. **→ planned: baselines must be generated on the CI runner's OS per engine; a reference-frame pixel comparison is used ad hoc.**
+- [x] **[medium] No visual regression tests.** Add screenshot comparisons of
+  key spreads and turn frames with a small tolerance. **→ done in 0.3.0: `e2e/visual.e2e.js` on a fixture book, per engine; baselines come from the manual "Visual baselines" workflow on CI's runners (comparisons skip until they exist). Also a frozen-layout round-trip test and a pixel-exact board-turn test at odd sizes.**
 - [x] **[low] No coverage reporting** for the Node unit tests
   (`node --test --experimental-test-coverage`). **→ done in #11 (`npm run test:coverage`).**
 
@@ -226,8 +226,8 @@ shareable while preventing someone selling them.
   with gradients. **→ investigated in #10: no measurable gain once the resting shadow is cached; kept as is.**
 - [x] **[medium] The table-shadow buffers are full-canvas offscreen canvases**
   (two × canvas size of memory); size them to the shadow's box. **→ done in #10.**
-- [ ] **[low] Readers download Pretext** (~45 KB compressed) and do layout on
-  load; frozen layout (spec) removes both. **→ planned: frozen layout (design spec) removes Pretext from readers.**
+- [x] **[low] Readers download Pretext** (~45 KB compressed) and do layout on
+  load; frozen layout (spec) removes both. **→ done in 0.3.0: readers get a frozen layout (~35 KB per edition) and never request Pretext or js-yaml (tested).**
 
 ## 9. Content and assets
 
@@ -237,6 +237,6 @@ shareable while preventing someone selling them.
   for line art; PNG/WebP at ≥ 300 ppi of print size for raster), colour
   (sRGB for screen, CMYK conversion at print time), file naming, and alt-text
   conventions. **→ done in #7, colour profile added in #11 (CONTRIBUTING).**
-- [ ] **[low] Fonts are Latin-only subsets**: characters outside Latin (é is
+- [x] **[low] Fonts are Latin-only subsets**: characters outside Latin (é is
   fine; Greek, Cyrillic, CJK are not) fall back to another font. The preflight
-  "missing character" rule (spec §3) must catch this. **→ planned: the preflight "missing character" rule (design spec).**
+  "missing character" rule (spec §3) must catch this. **→ done in 0.3.0: preflight stops the build on any character outside the theme's `unicodeRange`, naming it and its page.**
