@@ -116,7 +116,6 @@ function pass(
           lines: [
             `This edition: ${tpl.name}`,
             `Set in ${[...new Set(tpl.fonts.map((/** @type {any} */ f) => f.family))].join(', ')}`,
-            'Typeset with Pretext · pages turned by crease.js',
             [book.license && `Recipes and art: ${book.license.name}`, 'Code: Apache-2.0'].filter(Boolean).join(' · '),
           ],
         }),
@@ -157,7 +156,7 @@ function pass(
   // Back covers: contents end on a left page so the back endpaper is on the right.
   if (pages.length % 2) push(blankPage(tpl, nextSide()), pages[pages.length - 1].entry, { own: false });
   push(endpaperPage(tpl, images, { side: 'right', art }), '/');
-  push(boardPage(tpl, images, { which: 'back', art, lines: [book.title, `Typeset with Pretext · ${tpl.name}`] }), '/');
+  push(boardPage(tpl, images, { which: 'back', art, lines: [book.title] }), '/');
   for (const n of [1, 2, pages.length - 1, pages.length]) pages[n - 1].hard = true;
 
   // Contents: lay it out with the real page numbers into its reserved pages.

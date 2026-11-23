@@ -154,7 +154,6 @@ export function renderArticle(target, book) {
     return [
       '<article class="colophon">',
       '<h1>Colophon</h1>',
-      `<p>${escape(book.title)} is typeset with Pretext and its pages are turned by crease.js.</p>`,
       `<p>${licenceSentence(book.license)}The code is licensed under Apache-2.0. See <a href="/licenses/">licences</a>.</p>`,
       '</article>',
     ].join('\n');

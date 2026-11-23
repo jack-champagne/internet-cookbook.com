@@ -61,6 +61,7 @@ test('the colophon states the content licence from book.yaml', () => {
   const html = renderArticle({ kind: 'colophon' }, book);
   assert.match(html, /<a href="https:\/\/creativecommons\.org\/licenses\/by-nc\/4\.0\/">CC BY-NC 4\.0<\/a>/);
   assert.ok(!html.includes('CC0'));
+  assert.ok(!html.includes('Pretext'), 'no tool credits for readers');
 });
 
 test('every address gets a complete page', () => {
