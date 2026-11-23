@@ -47,6 +47,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Unit tests
         run: npm test
+      - name: Build the site
+        run: npm run build
       - name: Browser tests
         run: npm run test:e2e
       - name: Deploy to Cloudflare

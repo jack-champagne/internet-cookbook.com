@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseRecipe, parseInline, parseAttrs } from './public/recipe-md.js';
+import { parseRecipe, parseInline, parseAttrs } from '../src/content/markdown.js';
 
 test('parseAttrs: flags, values and quoted values', () => {
   assert.deepEqual(parseAttrs('place=right width=40% wrap'), { place: 'right', width: '40%', wrap: true });
@@ -90,7 +90,12 @@ test('front matter is YAML: nested times, quoting, and clear errors', () => {
 });
 
 test("the shipped shepherd's pie recipe parses", () => {
-  const r = parseRecipe(readFileSync(new URL('./public/recipes/shepherds-pie.md', import.meta.url), 'utf8'));
+  const r = parseRecipe(
+    readFileSync(
+      new URL('../books/internet-cookbook/chapters/hearth-and-home/shepherds-pie.md', import.meta.url),
+      'utf8',
+    ),
+  );
   assert.equal(r.meta.title, "Shepherd's Pie");
   const lists = r.blocks.filter((b) => b.type === 'list');
   assert.equal(lists.length, 2);

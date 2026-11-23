@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampToLens, computeFold, polygonArea, cubicBezier, reflectionMatrix } from './public/crease.js';
+import { clampToLens, computeFold, polygonArea, cubicBezier, reflectionMatrix } from '../src/crease.js';
 
 const W = 400,
   H = 520;

@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as playwright from 'playwright';
 import { loadBook } from '../src/content/load.js';
+import { parseDocument } from '../src/content/markdown.js';
 import { serve, ORIGIN } from '../scripts/lib/serve.mjs';
 import { BROWSER } from './helpers.js';
 
@@ -141,4 +142,30 @@ test('margins mirror: inside on the left of right pages, on the right of left pa
   for (const p of lefts)
     assert.ok(minX(p) >= 40 - 0.01 && minX(p) < 90, `left page ${p.n} starts at the outside margin`);
   for (const p of lefts) assert.equal(p.box.x1, 576 - 90, 'left page text area ends at the inside margin');
+});
+
+test('edge cases: a long ingredient list, a tall image and a missing image', async () => {
+  const ingredients = Array.from(
+    { length: 90 },
+    (_, i) => `- ${i + 1} ingredient with a fairly long description to wrap`,
+  ).join('\n');
+  const doc = parseDocument(
+    `---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![A tall picture](/__fixtures/tall.svg){width=100%}\n\n![Gone](/missing.svg){width=50%}\n\n1. Step.\n`,
+  );
+  const b = structuredClone(book);
+  b.chapters[0].entries[1].doc = doc;
+  b.assets.push('/__fixtures/tall.svg', '/missing.svg');
+  for (const edition of ['book', 'phone']) {
+    const { tpl, layout: L } = await layout(b, edition);
+    const at = L.entries['/recipes/hamburg-and-rice/'];
+    const pages = L.pages.slice(at.start - 1, at.last);
+    const bottom = tpl.page.height - tpl.page.margin.bottom,
+      area = bottom - tpl.page.margin.top;
+    const texts = pages.flatMap((p) => p.items.filter((i) => i.type === 'text'));
+    const imgs = pages.flatMap((p) => p.items.filter((i) => i.type === 'image'));
+    assert.equal(texts.filter((t) => t.y > bottom + 0.5).length, 0, `${edition}: text below the bottom margin`);
+    assert.ok(texts.filter((t) => /ingredient with/.test(t.text)).length >= 90, `${edition}: every ingredient is set`);
+    assert.equal(imgs.length, 1, `${edition}: the missing image is skipped, the tall one placed`);
+    assert.ok(imgs[0].h <= area + 0.01 && imgs[0].y + imgs[0].h <= bottom + 0.5, `${edition}: tall image fits`);
+  }
 });

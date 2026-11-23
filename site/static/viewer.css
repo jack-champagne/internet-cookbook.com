@@ -1,0 +1,149 @@
+/* The build puts the theme's @font-face rules and --text-font /
+   --display-font above this. */
+/* The book view sits above the article. The article is the page's real
+   content (reader mode, search engines, no-JS readers); it follows the book. */
+
+html,
+body {
+  margin: 0;
+}
+body {
+  background: #e9e6df;
+  color: #2b2925;
+  font:
+    18px/1.55 var(--text-font, Georgia),
+    Georgia,
+    serif;
+}
+
+/* --- Book --------------------------------------------------------------- */
+#book-view {
+  min-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 0 14px;
+  box-sizing: border-box;
+  font:
+    14px system-ui,
+    sans-serif;
+  color: #4a453d;
+}
+#loading {
+  color: #8a7f6c;
+}
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 10px;
+}
+.controls[hidden] {
+  display: none;
+}
+button,
+select {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #b9ab8f;
+  background: #fdfcf8;
+  color: inherit;
+}
+#status {
+  min-width: 120px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#book:focus {
+  outline: none;
+}
+#book:focus-visible {
+  outline: 2px solid #8a7f6c;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+/* --- Article (reader mode) ------------------------------------------------ */
+main#text {
+  max-width: 640px;
+  margin: 24px auto 0;
+  background: #fdfcf8;
+  padding: 32px 30px;
+  box-shadow: 0 3px 18px rgba(0, 0, 0, 0.12);
+}
+main#text h1,
+main#text h2 {
+  font-family: var(--display-font, Georgia), Georgia, serif;
+  font-weight: 500;
+  line-height: 1.1;
+}
+main#text h1 {
+  font-size: 38px;
+  margin: 0 0 12px;
+}
+main#text h2 {
+  font-size: 24px;
+  margin: 26px 0 8px;
+}
+main#text a {
+  color: #4f6346;
+}
+main#text img {
+  max-width: 100%;
+  height: auto;
+}
+main#text figure {
+  margin: 18px 0;
+}
+main#text figcaption {
+  color: #8a7f6c;
+  font-style: italic;
+}
+.kicker {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 4px;
+}
+.kicker a {
+  text-decoration: none;
+}
+.intro {
+  color: #4a453d;
+  font-style: italic;
+}
+.facts {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  color: #8a7f6c;
+}
+.note {
+  border-left: 3px solid #d9d1c1;
+  padding-left: 14px;
+  color: #6b5e48;
+  font-style: italic;
+}
+footer {
+  text-align: center;
+  font:
+    12px system-ui,
+    sans-serif;
+  color: #8a7f6c;
+  padding: 18px 0 28px;
+}
+footer a {
+  color: inherit;
+}
+
+/* Plain pages (licences, 404) have no book view. */
+body.plain main#text {
+  margin-top: 40px;
+}
