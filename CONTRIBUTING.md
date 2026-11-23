@@ -62,8 +62,12 @@ By submitting a contribution you agree that it is your own work (or you have
 the right to submit it) and that it is licensed the same way as the rest of
 the project:
 
-- **Recipes, writing and art** (`books/`, apart from `fonts/`): dedicated to
-  the public domain under [CC0 1.0](LICENSE-CONTENT).
+- **Recipes, writing and art** (`books/`, apart from `fonts/`): you keep the
+  copyright, and license it to everyone under
+  [CC BY-NC 4.0](LICENSE-CONTENT): anyone may share and adapt it with credit,
+  but not commercially. You also give the project's maintainer (Jack
+  Champagne) permission to use it commercially as part of the book, for
+  example to print and sell copies, and to relicense it for that purpose.
 - **Code** (everything else): licensed under [Apache-2.0](LICENSE).
 
 ## Code changes

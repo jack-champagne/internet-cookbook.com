@@ -29,7 +29,7 @@ Live at **[internet-cookbook.com](https://internet-cookbook.com)**.
 | What | Licence |
 |---|---|
 | Code (everything not listed below) | [Apache-2.0](LICENSE), © 2026 Jack Champagne |
-| Content: `books/*/` (recipes, pages, `art/`) | [CC0 1.0](LICENSE-CONTENT) — public domain dedication |
+| Content: `books/*/` (recipes, pages, `art/`) | [CC BY-NC 4.0](LICENSE-CONTENT), © their contributors (see [CREDITS.md](CREDITS.md)); before 2026-11-22, CC0 1.0 |
 | Third-party: `src/vendor/`, `books/*/fonts/` | Their own licences; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
 
 ## How it works

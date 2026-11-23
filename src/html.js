@@ -155,7 +155,7 @@ export function renderArticle(target, book) {
       '<article class="colophon">',
       '<h1>Colophon</h1>',
       `<p>${escape(book.title)} is typeset with Pretext and its pages are turned by crease.js.</p>`,
-      '<p>Recipes, writing and art are dedicated to the public domain (CC0 1.0). The code is licensed under Apache-2.0. See <a href="/licenses/">licences</a>.</p>',
+      `<p>${licenceSentence(book.license)}The code is licensed under Apache-2.0. See <a href="/licenses/">licences</a>.</p>`,
       '</article>',
     ].join('\n');
   }
@@ -229,9 +229,17 @@ export function recipeData(entry, book, site) {
     recipeInstructions: steps.map((/** @type {string} */ text) => ({ '@type': 'HowToStep', text })),
     image: images.length ? images : undefined,
     isPartOf: { '@type': 'Book', name: book.title },
+    license: book.license?.url,
   };
   return JSON.parse(JSON.stringify(data));
 }
+
+/** "Recipes, writing and art: <licence>. " for the colophon, or nothing. @param {{ name: string, url?: string } | undefined} l */
+const licenceSentence = (l) => {
+  if (!l) return '';
+  const name = l.url ? `<a href="${escape(l.url)}">${escape(l.name)}</a>` : escape(l.name);
+  return `Recipes, writing and art: ${name}. `;
+};
 
 /**
  * A complete HTML document: the viewer's book (enhanced by /viewer.js) above

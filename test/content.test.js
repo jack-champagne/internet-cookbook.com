@@ -41,6 +41,7 @@ test('slugs', () => {
 test('the real book loads, with every asset present', async () => {
   const book = await loadBook(realIO);
   assert.equal(book.title, 'Internet Cookbook');
+  assert.deepEqual(book.license, { name: 'CC BY-NC 4.0', url: 'https://creativecommons.org/licenses/by-nc/4.0/' });
   assert.deepEqual(book.editions, ['book', 'phone']);
   const entries = allEntries(book);
   assert.deepEqual(
@@ -110,6 +111,11 @@ test('a minimal book loads', async () => {
 
 test('validation: book.yaml', async () => {
   await fails({ 'book.yaml': BASE['book.yaml'] + 'colour: red\n' }, /book\.yaml:7: unknown setting "colour"/);
+  await fails({ 'book.yaml': BASE['book.yaml'] + 'license:\n  url: https://example.com/\n' }, /license needs a name/);
+  await fails(
+    { 'book.yaml': BASE['book.yaml'] + 'license:\n  name: X\n  kind: y\n' },
+    /unknown license setting "kind"/,
+  );
   await fails({ 'book.yaml': 'theme: theme.yaml\nchapters: []\n' }, /needs a title/);
   await fails({ 'book.yaml': 'title: T\ntheme: theme.yaml\nchapters: [\n' }, /book\.yaml:\d+: not valid YAML/);
   await fails({ 'book.yaml': BASE['book.yaml'].replace('a.md', 'missing.md') }, /can't read "missing\.md"/);

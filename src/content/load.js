@@ -27,6 +27,7 @@ import { resolveTemplate } from './theme.js';
  * @typedef {object} BookData
  * @property {string} title
  * @property {string} [subtitle]
+ * @property {{ name: string, url?: string }} [license] licence of the recipes, writing and art
  * @property {{ art?: string }} cover
  * @property {any} theme                 parsed theme.yaml
  * @property {string[]} editions
@@ -36,7 +37,7 @@ import { resolveTemplate } from './theme.js';
  * @property {string[]} assets           every site path the book needs (art, fonts)
  */
 
-const BOOK_KEYS = ['title', 'subtitle', 'theme', 'cover', 'front', 'chapters', 'back'];
+const BOOK_KEYS = ['title', 'subtitle', 'license', 'theme', 'cover', 'front', 'chapters', 'back'];
 const CHAPTER_KEYS = ['title', 'slug', 'opener', 'entries'];
 const ENTRY_KEYS = ['recipe', 'plate', 'start'];
 const PAGE_KEYS = ['page', 'start'];
@@ -116,6 +117,13 @@ export async function loadBook({ readText, exists, bookFile = 'book.yaml' }) {
   if (!book || typeof book !== 'object') fail('must be a set of "key: value" settings');
   for (const k of Object.keys(book)) if (!BOOK_KEYS.includes(k)) fail(`unknown setting "${k}"`, k);
   if (!book.title) fail('needs a title', 'title');
+  if (book.license != null) {
+    if (typeof book.license !== 'object')
+      fail('license needs a name (and url), e.g. license: { name: CC BY 4.0, url: … }', 'license');
+    for (const k of Object.keys(book.license))
+      if (!['name', 'url'].includes(k)) fail(`unknown license setting "${k}"`, k);
+    if (!book.license.name) fail('license needs a name', 'license');
+  }
   if (!book.theme) fail('needs a theme (e.g. theme: theme.yaml)', 'theme');
   if (!Array.isArray(book.chapters) || !book.chapters.length) fail('needs at least one chapter', 'chapters');
 
@@ -259,6 +267,14 @@ export async function loadBook({ readText, exists, bookFile = 'book.yaml' }) {
   return {
     title: String(book.title),
     ...(book.subtitle ? { subtitle: String(book.subtitle) } : {}),
+    ...(book.license
+      ? {
+          license: {
+            name: String(book.license.name),
+            ...(book.license.url ? { url: String(book.license.url) } : {}),
+          },
+        }
+      : {}),
     cover,
     theme,
     editions,
