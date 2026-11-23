@@ -50,7 +50,9 @@ async function compare(t, page, name, png) {
   const r = await page.evaluate(
     async ([a, b, channel]) => {
       const decode = async (b64) => {
-        const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+        // Decoded from bytes: the site's CSP blocks fetching data: URLs.
+        const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+        const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
         const c = new OffscreenCanvas(bmp.width, bmp.height);
         const g = c.getContext('2d');
         g.drawImage(bmp, 0, 0);
