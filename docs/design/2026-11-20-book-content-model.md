@@ -213,6 +213,11 @@ Each piece has one job and a data interface: `content` produces plain book
 data; `typeset` and `assemble` produce plain layout data; `render`, `html` and
 `preflight` consume them. No piece reaches into another's internals.
 
+As built: `src/content/` (content), `src/layout/` (typeset in `text.js`,
+`flow.js`, `pages.js`; assemble in `book.js`), `src/preflight.js`,
+`src/html.js`, `src/render.js` and `src/viewer.js`; `src/build/` runs layout
+and preflight in the headless browser for `scripts/build.mjs`.
+
 ### Build (`npm run build`)
 
 1. **Load and validate** (`content/`, Node). Errors: unreadable or invalid
@@ -242,12 +247,15 @@ data; `typeset` and `assemble` produce plain layout data; `render`, `html` and
 
 ```jsonc
 {
-  "edition": "book",
-  "trim": { "width": 576, "height": 720 },          // points
-  "fonts": { … },                                   // from the theme, for the viewer to load
-  "entries": { "recipes/shepherds-pie": { "firstPage": 4, "lastPage": 5, "path": "/recipes/shepherds-pie/" } },
+  "title": "Internet Cookbook",
+  "template": { "page": { "width": 576, "height": 720, "bleed": 9, "margin": { … } },  // points
+                "styles": { "folio": { … } } },
+  "fonts": [ { "family": "Crimson Pro", "src": "/fonts/…", "style": "normal", "weight": "400 600" } ],
+  // first: first page of the entry (its plate, if any); start: its own first page
+  "entries": { "/recipes/shepherds-pie/": { "first": 8, "start": 9, "last": 10, "title": "Shepherd's Pie" } },
   "pages": [
-    { "entry": "recipes/shepherds-pie", "hard": false, "folio": 5,
+    { "n": 9, "side": "right", "entry": "/recipes/shepherds-pie/", "hard": false, "folio": 9,
+      "box": { "x0": 56, "x1": 520, "top": 58, "bottom": 656 },
       "items": [
         { "type": "text", "x": 56, "y": 112.3, "text": "Shepherd's Pie", "font": "600 40px \"Cormorant Garamond\"", "color": "#2b2925" },
         { "type": "text", "text": "Boil the", "cont": true, "gap": 2.25, "…": "…" },
@@ -271,7 +279,8 @@ breaks are fixed by the build.
   complete, readable page.
 - The viewer script picks an edition (phone for portrait screens narrower than
   760 px, book otherwise; the reader can override), loads that edition's frozen
-  layout and fonts, and opens the book at the address's first page. The canvas
+  layout and fonts, and opens the book at the address's first page (its plate,
+  in two-page view) or its own first page (one-page view). The canvas
   is labelled for assistive technology as the book view, with the text version
   in the article.
 - **The article stays in the page, visible below the book** (not hidden):
@@ -309,9 +318,12 @@ ISO 8601 for the structured data.
 
 ### Editing (`npm run dev`)
 
-A local server that loads the book folder directly, runs layout live in the
-browser on every save, and shows layout guides and the preflight report on
-screen. The drag-and-resize editor builds on this later.
+A local server that rebuilds the site on every save to the book, the code or
+the static files (keeping one headless browser open, so a rebuild takes a
+fraction of a second), reloads open pages, and shows the preflight report in a
+panel on the page. Unlike `npm run build`, preflight errors don't stop it.
+`?guides` on any address shows the margins and text area. The drag-and-resize
+editor builds on this later.
 
 ## 3. Preflight rules
 
@@ -320,7 +332,7 @@ Run per edition over the assembled layouts. Overflow tolerance is 0.5 pt.
 | Rule | Severity |
 |---|---|
 | Text beyond the text area (outside the margins) | error |
-| Block larger than a page's text area (image or unbreakable item) | error |
+| Image larger than the text area (it is scaled down to fit) | warning |
 | Image beyond the bleed | error |
 | Font lacks a character used (would fall back to another font) | error |
 | Plate not on the left facing its recipe; `start` constraint not met | error |
@@ -331,8 +343,10 @@ Run per edition over the assembled layouts. Overflow tolerance is 0.5 pt.
 | Decorative image overlapping text (unless `layer=below` or `overlap` is set) | warning |
 | In-text image without a description | error (also caught in validation) |
 
-Fixing the warnings automatically (pulling lines back, tightening spacing
-within limits) is future work; this version reports them.
+The typesetter avoids widows and orphans itself: it moves one more line over
+to join a lone last line, or moves a short paragraph whole, and keeps a note
+with its step. Preflight reports any it couldn't avoid. Tightening spacing
+within limits is future work.
 
 ## 4. Testing
 
@@ -359,7 +373,7 @@ within limits) is future work; this version reports them.
 Readers download only the viewer, crease.js, the frozen layout for their
 edition, fonts and art.
 
-## 6. Migration from the prototype
+## 6. Migration from the prototype (done in 0.3.0)
 
 - `public/recipe-md.js` becomes `content/` (header parsing switches to YAML;
   body parsing kept).
@@ -369,6 +383,8 @@ edition, fonts and art.
 - `public/index.html`'s assembly script is replaced by the viewer.
 - The shepherd's pie moves to `books/internet-cookbook/chapters/hearth-and-home/`.
 - The site is built to `dist/`; `wrangler.jsonc` points its assets at `dist/`.
+- Static files (`_headers`, licences page, 404, icons) live in `site/static/`;
+  `public/` is gone.
 
 ## Out of scope
 

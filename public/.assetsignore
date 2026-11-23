@@ -1,3 +1,0 @@
-# Type declarations are for the type checker, not readers.
-*.d.mts
-*.d.ts

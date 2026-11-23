@@ -7,9 +7,12 @@ set -euo pipefail
 alias="$1"
 message="$2"
 
+# Run after `npm run build`.
+[ -f dist/_headers ] || { echo 'dist/ is missing: run npm run build first' >&2; exit 1; }
+
 # Previews must never be indexed: add a noindex rule to the site's _headers
 # for this upload only, and restore the original afterwards.
-headers=public/_headers
+headers=dist/_headers
 backup=$(mktemp)
 cp "$headers" "$backup"
 trap 'cp "$backup" "$headers"; rm -f "$backup"' EXIT

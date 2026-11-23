@@ -1,8 +1,11 @@
-// Browser tests for the cookbook page: it loads cleanly, typesets correctly,
-// turns pages, and page turns never "snap" at their start or end.
+// Browser tests for the published site (dist/): the book view loads cleanly
+// under the site's CSP, turns pages without snapping, opens at the page's
+// address and keeps the address, title and article in step as pages turn;
+// the article underneath reads well in reader mode.
 import { test, after, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { openBook, phone as phoneContext } from './helpers.js';
+import { readFile } from 'node:fs/promises';
+import { openBook, phone as phoneContext, REPO } from './helpers.js';
 
 let desktop;
 before(async () => {
@@ -59,10 +62,12 @@ test('the counter names every visible page', async () => {
 });
 
 test('licences and 404 pages load cleanly under the site CSP', async () => {
-  for (const path of ['/licenses.html', '/404.html']) {
+  for (const path of ['/licenses/', '/no-such-page/']) {
     const plain = await openBook({}, path);
     try {
-      assert.deepEqual(plain.errors, [], `${path}: ${plain.errors.join('; ')}`);
+      // The browser logs the missing page's own 404; anything else is a fault.
+      const errors = plain.errors.filter((e) => !(path === '/no-such-page/' && /status of 404/.test(e)));
+      assert.deepEqual(errors, [], `${path}: ${errors.join('; ')}`);
       assert.ok((await plain.page.textContent('h1')).length > 3);
     } finally {
       await plain.close();
@@ -88,99 +93,6 @@ test('next() turns the page', async () => {
   await page.evaluate(() => window.book().goTo(1));
   await page.evaluate(() => window.book().next());
   await page.waitForFunction(() => window.book().page === 2, null, { timeout: 5000 });
-});
-
-test('typeset text: exact word spaces, nothing past the margins or into images', async () => {
-  const result = await desktop.page.evaluate(async () => {
-    const T = await import('/typeset.js'),
-      { parseRecipe } = await import('/recipe-md.js');
-    const c = document.createElement('canvas').getContext('2d');
-    const out = {};
-    // Every recipe the test book contains (interim list until book.yaml).
-    for (const file of ['shepherds-pie', 'hamburg-and-rice']) {
-      const recipe = parseRecipe(await (await fetch(`/recipes/${file}.md`)).text());
-      const images = await T.loadImages(recipe);
-      for (const edition of Object.keys(T.TEMPLATES)) {
-        const name = `${file} / ${edition}`;
-        const tpl = T.TEMPLATES[edition],
-          pages = T.typesetRecipe(recipe, tpl, images);
-        const right = tpl.page.width - tpl.page.margin.right;
-        const width = (it) => {
-          c.font = it.font.replace(/([\d.]+)px/, (_, n) => `${n * 3}px`);
-          return c.measureText(it.text).width / 3;
-        };
-        let pastMargin = 0,
-          intoImage = 0,
-          badSpaces = 0;
-        for (const pg of pages) {
-          let prevEnd = 0;
-          for (const it of pg.items.filter((i) => i.type === 'text')) {
-            if (it.cont) {
-              const x = prevEnd + it.gap;
-              if (it.gap !== 0 && (it.gap < 1 || it.gap > 4)) badSpaces++;
-              it.x = x;
-            }
-            const end = it.x + width(it);
-            prevEnd = end;
-            if (end > right + 0.5) pastMargin++;
-            for (const f of pg.floats)
-              if (it.y > f.y && it.y - 8 < f.y + f.h && end > f.x - 1 && it.x < f.x + f.w) intoImage++;
-          }
-        }
-        // A page whose only text is a handwritten note means the note was orphaned.
-        const loneNotes = pages.filter((pg) => {
-          const t = pg.items.filter((i) => i.type === 'text');
-          return t.length > 0 && t.every((i) => i.font.includes('Caveat'));
-        }).length;
-        out[name] = { pages: pages.length, pastMargin, intoImage, badSpaces, loneNotes };
-      }
-    }
-    return out;
-  });
-  for (const [name, r] of Object.entries(result)) {
-    assert.ok(r.pages >= 1, `${name}: has pages`);
-    assert.equal(r.pastMargin, 0, `${name}: text past the margin`);
-    assert.equal(r.intoImage, 0, `${name}: text running into a wrapped image`);
-    assert.equal(r.badSpaces, 0, `${name}: word spaces out of range`);
-    assert.equal(r.loneNotes, 0, `${name}: a note alone on a page`);
-  }
-});
-
-test('typesetting edge cases: long ingredient lists, tall images, missing images', async () => {
-  const r = await desktop.page.evaluate(async () => {
-    const T = await import('/typeset.js'),
-      { parseRecipe } = await import('/recipe-md.js');
-    const ingredients = Array.from(
-      { length: 90 },
-      (_, i) => `- ${i + 1} ingredient with a fairly long description to wrap`,
-    ).join('\n');
-    const recipe = parseRecipe(
-      `---\ntitle: Fixture\n---\n\n## Ingredients\n\n${ingredients}\n\n## Method\n\n![tall](/__fixtures/tall.svg){width=100%}\n\n![gone](/missing.svg){width=50%}\n\n1. Step.\n`,
-    );
-    const images = await T.loadImages(recipe); // the tall fixture loads; /missing.svg doesn't
-    const out = {};
-    for (const [name, tpl] of Object.entries(T.TEMPLATES)) {
-      const pages = T.typesetRecipe(recipe, tpl, images);
-      const bottom = tpl.page.height - tpl.page.margin.bottom,
-        area = bottom - tpl.page.margin.top;
-      const texts = pages.flatMap((p) => p.items.filter((i) => i.type === 'text'));
-      const imgs = pages.flatMap((p) => p.items.filter((i) => i.type === 'image'));
-      out[name] = {
-        textBelowMargin: texts.filter((t) => t.y > bottom + 0.5).length,
-        ingredientsSet:
-          texts.filter((t) => / ingredient with/.test(t.text) || /^\d+ ingredient/.test(t.text)).length >= 90,
-        tallFits: imgs.every((i) => i.h <= area + 0.01 && i.y + i.h <= bottom + 0.5),
-        images: imgs.length,
-      };
-    }
-    return out;
-  });
-  for (const [name, x] of Object.entries(r)) {
-    assert.equal(x.textBelowMargin, 0, `${name}: text below the bottom margin`);
-    assert.ok(x.ingredientsSet, `${name}: every ingredient is set`);
-    assert.ok(x.tallFits, `${name}: tall image scaled to the text area`);
-    assert.equal(x.images, 1, `${name}: the missing image is skipped, the tall one placed`);
-  }
 });
 
 test('page turns match the static book exactly at both ends (no shadow snap)', async () => {
@@ -230,6 +142,54 @@ test('page turns match the static book exactly at both ends (no shadow snap)', a
   }
 });
 
+test('a turning board lines up with the page at rest at any size (no seams)', async () => {
+  // Dark boards over light pages show any gap between the board's strips, and
+  // odd sizes put strip edges and page edges between pixels.
+  for (const deviceScaleFactor of [1, 2]) {
+    const ctx = await openBook({ deviceScaleFactor });
+    try {
+      const rows = await ctx.page.evaluate(async () => {
+        const { Book } = await import('/crease.js');
+        const out = [];
+        for (const W of [520, 533.3, 536, 547.5]) {
+          const c = document.createElement('canvas');
+          document.body.append(c);
+          const pages = Array.from({ length: 8 }, (_, i) => (g, w, h) => {
+            g.fillStyle = i === 0 || i === 7 ? '#3d4a3a' : '#fdfcf8';
+            g.fillRect(0, 0, w, h);
+            g.fillStyle = '#c00';
+            g.font = '30px serif';
+            g.fillText(`Board ${i}`, 40, 80);
+          });
+          const b = new Book(c, { pages, pageWidth: W, pageHeight: W * 1.25, padding: 28.3, hard: [1, 2, 7, 8] });
+          const grab = () => b.ctx.getImageData(0, 0, c.width, c.height).data;
+          for (const [dir, from] of [
+            ['forward', 1],
+            ['backward', 8],
+          ]) {
+            b.goTo(from);
+            b.render();
+            const rest = grab();
+            const S = { x: b.W, y: b.H };
+            b.debugFrame(dir, S, S);
+            const lifted = grab();
+            b.debugFrame();
+            let max = 0;
+            for (let i = 0; i < rest.length; i++) max = Math.max(max, Math.abs(rest[i] - lifted[i]));
+            out.push({ W, dir, max });
+          }
+          b.destroy();
+          c.remove();
+        }
+        return out;
+      });
+      for (const r of rows) assert.equal(r.max, 0, `${deviceScaleFactor}x, width ${r.W}, ${r.dir}`);
+    } finally {
+      await ctx.close();
+    }
+  }
+});
+
 test('keyboard: arrows, Home and End turn pages', async () => {
   const { page } = desktop;
   await page.evaluate(() => window.book().goTo(1));
@@ -253,7 +213,7 @@ test('accessible name says which pages are showing', async () => {
   const { page } = desktop;
   await page.evaluate(() => window.book().goTo(4));
   const label = await page.getAttribute('#book', 'aria-label');
-  assert.match(label, /^Book, pages 4–5 of \d+$/);
+  assert.match(label, /^Internet Cookbook, pages 4–5 of \d+$/);
   assert.equal(await page.getAttribute('#book', 'tabindex'), '0');
 });
 
@@ -306,5 +266,70 @@ test('portrait phone: single pages on the phone trim, no errors', async () => {
     assert.ok(Math.abs(info.h / info.w - 7.5 / 4.5) < 0.02, 'phone trim proportions');
   } finally {
     await phone.close();
+  }
+});
+
+test('a recipe address opens the book at that recipe', async () => {
+  const deep = await openBook({}, '/recipes/hamburg-and-rice/');
+  try {
+    assert.deepEqual(deep.errors, []);
+    const s = await deep.page.evaluate(async () => {
+      const layout = await (await fetch('/layout/book.json')).json();
+      const at = layout.entries['/recipes/hamburg-and-rice/'];
+      return { shown: window.book().visiblePages, start: at.start };
+    });
+    assert.ok(s.shown.includes(s.start), `recipe start page ${s.start} is showing (${s.shown})`);
+    assert.equal(new URL(deep.page.url()).pathname, '/recipes/hamburg-and-rice/');
+  } finally {
+    await deep.close();
+  }
+});
+
+test('turning pages updates the address, title and article', async () => {
+  const { page } = desktop;
+  const { entries } = await page.evaluate(async () => (await fetch('/layout/book.json')).json());
+  const recipe = entries['/recipes/shepherds-pie/'];
+  await page.evaluate((n) => window.book().goTo(n), recipe.start);
+  await page.waitForFunction(() => location.pathname === '/recipes/shepherds-pie/', null, { timeout: 5000 });
+  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === "Shepherd's Pie", null, {
+    timeout: 5000,
+  });
+  assert.equal(await page.title(), "Shepherd's Pie · Internet Cookbook");
+  assert.equal(
+    await page.getAttribute('link[rel=canonical]', 'href'),
+    'https://internet-cookbook.com/recipes/shepherds-pie/',
+  );
+  await page.evaluate(() => window.book().goTo(1));
+  await page.waitForFunction(() => location.pathname === '/', null, { timeout: 5000 });
+  assert.equal(await page.title(), 'Internet Cookbook');
+  assert.deepEqual(desktop.errors, []);
+});
+
+test('readers never download the build tools (Pretext, js-yaml) or the book source', async () => {
+  const bad = desktop.requests.filter((u) => /pretext|js-yaml|\/src\/|\.md$|\.yaml$/.test(u));
+  assert.deepEqual(bad, []);
+});
+
+test('reader mode: Readability extracts each recipe whole', async () => {
+  // A separate context that ignores the CSP, so the test can inject Readability.
+  const reader = await openBook({ bypassCSP: true, javaScriptEnabled: true }, '/recipes/shepherds-pie/');
+  try {
+    const script = await readFile(`${REPO}node_modules/@mozilla/readability/Readability.js`, 'utf8');
+    for (const path of ['/recipes/shepherds-pie/', '/recipes/hamburg-and-rice/']) {
+      await reader.page.goto(`https://book.test${path}`);
+      await reader.page.addScriptTag({ content: script });
+      const article = await reader.page.evaluate(() => {
+        // eslint-disable-next-line no-undef
+        const r = new Readability(document.cloneNode(true)).parse();
+        return r && { title: r.title, text: r.textContent };
+      });
+      assert.ok(article, `${path}: Readability found an article`);
+      assert.match(article.title, /Shepherd's Pie|Hamburg and Rice/);
+      assert.match(article.text, /Ingredients/);
+      assert.match(article.text, /Method/);
+      assert.doesNotMatch(article.text, /Opening the book|Page: auto/, `${path}: the book controls are left out`);
+    }
+  } finally {
+    await reader.close();
   }
 });

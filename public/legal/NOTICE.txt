@@ -1,9 +1,0 @@
-Internet Cookbook
-Copyright 2026 Jack Champagne
-
-Licensed under the Apache License, Version 2.0 (see LICENSE). Recipes, writing
-and artwork are dedicated to the public domain under CC0 1.0 (see
-LICENSE-CONTENT and README.md for which files are which).
-
-This product includes third-party software and fonts under their own
-licences; see THIRD_PARTY_NOTICES.md.

@@ -1,0 +1,86 @@
+# The book's design: fonts, colours, page sizes and text styles. Content lives
+# in book.yaml and the Markdown files. Every length has a unit (pt, in, mm).
+
+fonts:
+  # Latin subsets; preflight reports any character outside this range.
+  unicodeRange: >-
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD
+  display:
+    family: Cormorant Garamond
+    files:
+      - { src: fonts/cormorant-garamond-normal-500.woff2, weight: 500 700 }
+      - { src: fonts/cormorant-garamond-italic-500.woff2, style: italic, weight: '500' }
+  text:
+    family: Crimson Pro
+    files:
+      - { src: fonts/crimson-pro-normal-400.woff2, weight: 400 600 }
+      - { src: fonts/crimson-pro-italic-400.woff2, style: italic, weight: '400' }
+  hand:
+    family: Caveat
+    files:
+      - { src: fonts/caveat-normal-500.woff2, weight: '500' }
+
+colors:
+  ink: '#2b2925'
+  muted: '#8a7f6c'
+  rule: '#d9d1c1'
+  paper: '#fdfcf8'
+  lede: '#4a453d'
+  note: '#6b5e48'
+
+cover: # outside of the cover boards
+  cloth: '#3d4a3a'
+  title: '#efe6cf'
+  subtitle: '#c8bf9f'
+  frame: '#b9a067'
+
+endpaper: # inside of the cover boards
+  paper: '#cdd1bd'
+  motif: '#8f987c'
+
+editions:
+  book:
+    name: 8 × 10 in
+    trim: 8 x 10 in
+    margins: { top: 58pt, outside: 56pt, bottom: 64pt, inside: 56pt }
+    bleed: 0.125in
+  phone:
+    name: 4.5 × 7.5 in
+    trim: 4.5 x 7.5 in
+    margins: { top: 34pt, outside: 26pt, bottom: 40pt, inside: 26pt }
+    bleed: 0.125in
+    overrides:
+      styles:
+        kicker: { size: 7.5pt, leading: 11pt, tracking: 1.4pt }
+        title: { size: 32pt, leading: 34pt }
+        lede: { size: 12pt, leading: 16pt }
+        meta: { size: 7.5pt, leading: 11pt, tracking: 1pt }
+        heading: { size: 17pt, leading: 20pt, spaceBefore: 12pt, spaceAfter: 4pt }
+        body: { size: 11pt, leading: 15pt }
+        step: { size: 11pt, leading: 15pt, spaceAfter: 5pt }
+        stepNumber: { size: 14pt, leading: 15pt }
+        note: { size: 15pt, leading: 16pt }
+        folio: { size: 8pt, leading: 11pt }
+      recipe:
+        ingredients: { columns: 1, gap: 0pt, hang: 8pt, itemGap: 1.5pt }
+        steps: { indent: 18pt }
+        note: { indent: 25% }
+
+styles:
+  kicker: { font: text, size: 8.5pt, leading: 12pt, color: muted, caps: true, tracking: 1.8pt }
+  title: { font: display, weight: 600, size: 40pt, leading: 42pt }
+  lede: { font: text, italic: true, size: 13.5pt, leading: 18.5pt, color: lede }
+  meta: { font: text, size: 8.5pt, leading: 12pt, color: muted, caps: true, tracking: 1.2pt }
+  heading: { font: display, weight: 600, size: 19pt, leading: 22pt, spaceBefore: 16pt, spaceAfter: 5pt }
+  body: { font: text, size: 12pt, leading: 16.5pt }
+  step: { font: text, size: 12pt, leading: 16.5pt, spaceAfter: 6pt }
+  stepNumber: { font: display, weight: 600, size: 16pt, leading: 16.5pt, color: muted }
+  note: { font: hand, weight: 500, size: 17pt, leading: 18pt, color: note }
+  folio: { font: text, size: 9pt, leading: 12pt, color: muted }
+
+recipe:
+  ingredients: { columns: 2, gap: 24pt, hang: 9pt, itemGap: 2pt }
+  steps: { indent: 22pt }
+  note: { indent: 38% }
