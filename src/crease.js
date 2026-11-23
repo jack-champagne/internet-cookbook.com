@@ -64,7 +64,7 @@ const DEFAULTS = {
   paperColor: '#fdfcf8',
   shading: true,
   debug: false,
-  onTurn: null, // (page) => void, after a turn completes
+  onTurn: null, // (page) => void, after a turn completes or goTo() changes the page
   label: 'Book', // accessible name prefix, e.g. "Book, pages 4–5 of 8"
   keepPages: 4, // rasterised pages kept within this distance of the current page
   // Shadow and shading strengths (0-1 opacity); pass a partial object to tune.
@@ -127,10 +127,13 @@ export class Book {
     return this._auto('backward');
   }
 
+  /** Jump to page n without animating; calls onTurn if the page changed. */
   goTo(n) {
     this._cancel();
+    const before = this.page;
     this.current = clamp(Math.round(n), 1, Math.max(1, this.pages.length));
     this.render();
+    if (this.page !== before) this.opts.onTurn?.(this.page);
   }
 
   /** Number of pages currently held as rasterised canvases (for tests and diagnostics). */
@@ -211,8 +214,8 @@ export class Book {
   }
 
   _raster(page) {
-    const W = this.opts.pageWidth,
-      H = this.opts.pageHeight,
+    const W = this.W,
+      H = this.H,
       pr = this.dpr;
     const c = document.createElement('canvas');
     c.width = Math.round(W * pr);
@@ -287,7 +290,11 @@ export class Book {
   }
 
   _layout() {
-    const { pageWidth: W, pageHeight: H, padding: pad } = this.opts;
+    // Whole CSS pixels: a page edge between pixels is drawn soft, and a
+    // turning page couldn't line up exactly with the page at rest.
+    const W = Math.round(this.opts.pageWidth),
+      H = Math.round(this.opts.pageHeight),
+      pad = Math.round(this.opts.padding);
     this.W = W;
     this.H = H;
     this.top = pad;
@@ -975,7 +982,7 @@ export class Book {
     const ctx = this.ctx,
       W = this.W,
       H = this.H;
-    const F = Math.min(14, this.opts.padding * 0.5); // fade distance from the page edge
+    const F = Math.min(14, this.top * 0.5); // fade distance from the page edge
     if (alpha <= 0.001 || F < 1) return;
     const m = ctx.getTransform();
     const toW = (q) => this._toWorld(q, side);
@@ -1108,6 +1115,11 @@ export class Book {
 
     const src = this._source(n, (side === -1) !== this.rtl);
     const strips = 32;
+    // Strip edges sit on device pixels: two anti-aliased clip edges meeting
+    // inside a pixel leave it partly uncovered, and the page below shows
+    // through as a faint line. The spine and outer edge stay exact.
+    const edge = (/** @type {number} */ u) =>
+      u <= 0 || u >= 1 ? u * w : side * (Math.round((this.spineX + side * u * w) * this.dpr) / this.dpr - this.spineX);
     ctx.save();
     ctx.translate(this.spineX, 0);
     ctx.scale(side, 1);
@@ -1116,8 +1128,8 @@ export class Book {
         u1 = (i + 1) / strips;
       const h = H * (1 + (grow * (u0 + u1)) / 2);
       const y = this.top + (H - h) / 2;
-      const dx = u0 * w,
-        dw = (u1 - u0) * w + (i < strips - 1 ? 0.6 : 0); // overlap hides seams
+      const dx = edge(u0),
+        dw = edge(u1) - dx + (i < strips - 1 ? 0.6 : 0); // overlap hides seams while turning
       if (src) {
         // Draw the whole page scaled to this strip's height, clipped to the
         // strip. Sampling a source sub-rectangle instead would resample edges
