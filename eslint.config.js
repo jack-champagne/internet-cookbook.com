@@ -4,14 +4,19 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['public/vendor/**', 'node_modules/**', '.wrangler/**'] },
+  { ignores: ['public/vendor/**', 'src/vendor/**', 'node_modules/**', '.wrangler/**', 'dist/**'] },
   js.configs.recommended,
   {
     files: ['public/**/*.js'],
     languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: globals.browser },
   },
   {
-    files: ['*.js', 'e2e/**/*.js', 'scripts/**/*.mjs'],
+    // Shared engine code runs in the browser and, for content and builds, in Node.
+    files: ['src/**/*.js'],
+    languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: { ...globals.browser, ...globals.node } },
+  },
+  {
+    files: ['*.js', 'e2e/**/*.js', 'test/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
   },
   {

@@ -1,0 +1,25 @@
+# The book's structure and order. Design lives in theme.yaml; each recipe and
+# page is a Markdown file. Paths are relative to this folder.
+title: Internet Cookbook
+subtitle: Recipes set by hand, on the web
+theme: theme.yaml
+cover:
+  art: art/rosemary.svg
+
+front:
+  - toc # table of contents, generated
+  - page: intro.md
+
+chapters:
+  - title: Hearth & Home
+    opener:
+      art: art/rosemary.svg
+    entries:
+      - recipe: chapters/hearth-and-home/shepherds-pie.md
+        plate:
+          art: art/shepherds-pie.svg
+          caption: Shepherd’s pie, fresh from the oven
+      - recipe: chapters/hearth-and-home/hamburg-and-rice.md
+
+back:
+  - colophon # credits page, generated
