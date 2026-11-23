@@ -117,7 +117,7 @@ function pass(
             `This edition: ${tpl.name}`,
             `Set in ${[...new Set(tpl.fonts.map((/** @type {any} */ f) => f.family))].join(', ')}`,
             'Typeset with Pretext · pages turned by crease.js',
-            'Recipes and art: public domain (CC0) · Code: Apache-2.0',
+            [book.license && `Recipes and art: ${book.license.name}`, 'Code: Apache-2.0'].filter(Boolean).join(' · '),
           ],
         }),
         e.address,

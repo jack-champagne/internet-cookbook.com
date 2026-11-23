@@ -25,7 +25,7 @@ soon · **[medium]** fix when touching the area · **[low]** polish.
 | `src/vendor/pretext/` (Pretext 1.0.0) | npm `@chenglou/pretext` | MIT, plus notices for code ported from Chromium (BSD-3-Clause), WebKit (BSD-2-Clause) and Unicode/ICU data (Unicode-3.0, ICU licence) | Keep `LICENSE` with the files (done). Build-time only: not served to readers | ✅ |
 | `src/vendor/js-yaml/` (js-yaml 5.5.0) | npm `js-yaml` | MIT | Keep `LICENSE` with the files (done). Build-time only | ✅ |
 | Fonts: Cormorant Garamond, Crimson Pro, Caveat (Latin subsets, woff2) | Google Fonts | SIL OFL 1.1, no Reserved Font Names, so subsetting is allowed | Ship each `OFL-*.txt` with the fonts (done, copied into every build); never sell the fonts by themselves | ✅ |
-| `books/internet-cookbook/` recipes, pages and `art/` (placeholders) | Written or drawn for this project with an AI assistant | CC0 1.0 | None; provenance in `CREDITS.md` | ✅ (to be replaced by the family's own) |
+| `books/internet-cookbook/` recipes, pages and `art/` (placeholders) | Written or drawn for this project with an AI assistant | CC BY-NC 4.0 (CC0 1.0 before 2026-11-22) | None; provenance in `CREDITS.md` | ✅ (to be replaced by the family's own) |
 | Original `bezier.js` / `bezier.html` (history only) | The repository owner | — | — | ✅ |
 | Dev tools (Playwright, Wrangler, ESLint, Prettier, TypeScript, Readability) | npm | Apache-2.0 / MIT / others | None: not shipped to readers | ✅ |
 
@@ -76,7 +76,7 @@ code or images remain in any branch. No third-party page-turning code (studied f
 - [ ] **[low] Name check.** Before printing or selling, check "Internet
   Cookbook" doesn't clash with an existing trademark in publishing. **→ preliminary check done 2026-11-22 (web and trademark-listing searches, not legal advice): no registered or pending "Internet Cookbook" mark or site found; nearby marks are generic ("Digital Cookbook", "My Cookbook", both cancelled; "Cookbook", live, Class 35). "crease.js" has no published package or library of that name (npm `crease` is an unrelated CSS tool, so publish as `crease.js` or a scoped name). Owner: a USPTO search (or a lawyer) before printing or selling.**
 
-### Choosing licences (decided: Apache-2.0 for code, CC0 1.0 for content)
+### Choosing licences (decided: Apache-2.0 for code, CC BY-NC 4.0 for content; CC0 1.0 until 2026-11-22)
 
 Code — recommended: **Apache-2.0** (permissive like MIT, plus an explicit
 patent grant and a NOTICE mechanism that suits the bundled third-party

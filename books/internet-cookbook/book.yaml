@@ -2,6 +2,9 @@
 # page is a Markdown file. Paths are relative to this folder.
 title: Internet Cookbook
 subtitle: Recipes set by hand, on the web
+license: # of the recipes, writing and art (the code is Apache-2.0)
+  name: CC BY-NC 4.0
+  url: https://creativecommons.org/licenses/by-nc/4.0/
 theme: theme.yaml
 cover:
   art: art/rosemary.svg

@@ -53,7 +53,14 @@ test('recipe data for search engines and recipe apps', () => {
   assert.match(d.recipeInstructions[0].text, /^Make the mash\. Boil/);
   assert.deepEqual(d.image, [`${SITE}/art/shepherds-pie.svg`]);
   assert.equal(d.url, `${SITE}/recipes/shepherds-pie/`);
+  assert.equal(d.license, 'https://creativecommons.org/licenses/by-nc/4.0/');
   assert.equal(recipeData(hamburg, book, SITE).totalTime, undefined, 'absent values are left out');
+});
+
+test('the colophon states the content licence from book.yaml', () => {
+  const html = renderArticle({ kind: 'colophon' }, book);
+  assert.match(html, /<a href="https:\/\/creativecommons\.org\/licenses\/by-nc\/4\.0\/">CC BY-NC 4\.0<\/a>/);
+  assert.ok(!html.includes('CC0'));
 });
 
 test('every address gets a complete page', () => {

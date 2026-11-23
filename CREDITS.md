@@ -2,7 +2,8 @@
 
 Where each recipe, piece of writing and illustration came from. Add an entry
 whenever content is added or replaced (see CONTRIBUTING.md). All content here
-is dedicated to the public domain under CC0 1.0 (LICENSE-CONTENT).
+is licensed under CC BY-NC 4.0 (LICENSE-CONTENT); see CONTRIBUTING.md for the
+terms contributors agree to.
 
 ## Recipes and pages
 

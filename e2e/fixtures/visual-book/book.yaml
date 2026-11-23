@@ -4,6 +4,8 @@
 # from books/internet-cookbook/fonts/ when the test runs.
 title: Internet Cookbook
 subtitle: Recipes set by hand, on the web
+license: # kept as it was when the screenshots were made
+  name: public domain (CC0)
 theme: theme.yaml
 cover:
   art: art/rosemary.svg
