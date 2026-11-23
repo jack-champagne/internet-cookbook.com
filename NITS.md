@@ -4,11 +4,11 @@ Full audit of the repository, its history and the deployed site, 2026-11-20.
 Every finding is listed, from blockers to polish. Each item says what is
 wrong, why it matters, and the fix, followed by its outcome (**→ …**).
 
-**Status (2026-11-22, 0.3.0):** 58 of 60 items done or decided. No blockers
+**Status (2026-11-22, 0.3.0):** 59 of 60 items done or decided. No blockers
 remain. The book is built from `book.yaml` and `theme.yaml`, with a reader-mode
-article at every address, frozen layouts and preflight. Two items are the
-owner's: the family's own recipes and art, and a formal name search before
-printing or selling (a preliminary check found no conflict).
+article at every address, frozen layouts and preflight. One item is the
+owner's: the family's own recipes and art. (The name check is done; a lawyer's
+clearance search is advised before selling printed copies.)
 
 Severity: **[blocker]** must fix before the book is public · **[high]** fix
 soon · **[medium]** fix when touching the area · **[low]** polish.
@@ -73,8 +73,8 @@ code or images remain in any branch. No third-party page-turning code (studied f
   stories and photos are. Contributors must only add their own writing and
   art, or material with a compatible licence, credited in `CREDITS.md`. No
   images from web searches, stock sites or scans of books and magazines. **→ done in #7 (CONTRIBUTING).**
-- [ ] **[low] Name check.** Before printing or selling, check "Internet
-  Cookbook" doesn't clash with an existing trademark in publishing. **→ preliminary check done 2026-11-22 (web and trademark-listing searches, not legal advice): no registered or pending "Internet Cookbook" mark or site found; nearby marks are generic ("Digital Cookbook", "My Cookbook", both cancelled; "Cookbook", live, Class 35). "crease.js" has no published package or library of that name (npm `crease` is an unrelated CSS tool, so publish as `crease.js` or a scoped name). Owner: a USPTO search (or a lawyer) before printing or selling.**
+- [x] **[low] Name check.** Before printing or selling, check "Internet
+  Cookbook" doesn't clash with an existing trademark in publishing. **→ done 2026-11-22 (not legal advice). Web and trademark-listing searches found no "Internet Cookbook" mark or site. USPTO Trademark Search, combined-mark field: `CM:"internet cookbook"` and `CM:internetcookbook` return no results, live or dead; `CM:"cookbook"` returns 223, so the searches work. The nearest live mark is COOKBOOK (serial 97167290, Class 35: pastry shops and online grocery retail), a different class from books (16) and online content (41). "crease.js" has no published package or library of that name (npm `crease` is an unrelated CSS tool, so publish as `crease.js` or a scoped name). Before selling printed copies, a lawyer's clearance search (which also covers state and common-law use) is advised.**
 
 ### Choosing licences (decided: Apache-2.0 for code, CC0 1.0 for content)
 
