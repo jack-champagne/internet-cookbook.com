@@ -110,6 +110,24 @@ for (const edition of ['book', 'phone']) {
   });
 }
 
+for (const edition of ['book', 'phone']) {
+  test(`${edition}: preflight finds no errors in the real book`, async () => {
+    const { report } = await layout(book, edition);
+    assert.deepEqual(report.errors, []);
+  });
+}
+
+test('preflight catches a character the fonts lack, in a real layout', async () => {
+  const b = structuredClone(book);
+  b.chapters[0].entries[0].doc.blocks.push({
+    type: 'paragraph',
+    runs: [{ text: 'Mix with ψ.', bold: false, italic: false }],
+    line: 99,
+  });
+  const { report } = await layout(b, 'book');
+  assert.ok(report.errors.some((f) => f.rule === 'missing-character' && /U\+03C8/.test(f.message)));
+});
+
 test('margins mirror: inside on the left of right pages, on the right of left pages', async () => {
   const theme = structuredClone(book.theme);
   theme.editions.book.margins = { top: '58pt', bottom: '64pt', inside: '90pt', outside: '40pt' };

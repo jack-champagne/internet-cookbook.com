@@ -10,6 +10,7 @@ import { parseLength, parsePercent, parseTrim, parseUnicodeRange } from './units
 
 /**
  * @typedef {object} TextStyle
+ * @property {string} role        the style's name (e.g. 'heading'), recorded on text it sets
  * @property {string} family      CSS font family, quoted
  * @property {number} weight
  * @property {number} boldWeight
@@ -136,6 +137,7 @@ export function resolveTemplate(theme, edition, where = {}) {
     /** @param {string} k */
     const len = (k) => (s[k] == null ? undefined : attempt(() => parseLength(s[k]), `style "${name}" ${k}`, name));
     styles[name] = {
+      role: name,
       family: families[s.font],
       weight: Number(s.weight ?? 400),
       boldWeight: 600,

@@ -39,4 +39,4 @@ Slow-simmered lamb and garden vegetables under a golden crown of buttered mash â
 
 > Rough up the mash with a fork â€” the ridges crisp beautifully.
 
-![](../../art/rosemary.svg){decor x=48% y=4 width=36% rotate=-9}
+![](../../art/rosemary.svg){decor x=48% y=10 width=36% rotate=-9}

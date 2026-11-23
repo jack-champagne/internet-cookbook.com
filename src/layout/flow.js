@@ -117,12 +117,30 @@ export function flowText(
   const prepared = prepareRichInline(items);
   const blk = ++flow.blocks;
   /** @type {any[]} */
-  const created = [];
+  let created = [];
   /** @type {any} */
   let cursor;
   let first = true,
     ln = 0,
     lastBaseline = 0;
+  // Where the block began, and each placed line (to take lines back for
+  // widow and orphan control).
+  const blockStart = { page: flow.page, items: flow.page.items.length, y: flow.y };
+  /** @type {{ page: any, itemsBefore: number, cursor: any, items: any[] }[]} */
+  const placed = [];
+  /** Lines left from `from` at full width, counting up to 2. */
+  const linesLeft = (/** @type {any} */ from) => {
+    const width = Math.max(20, flow.box.x1 - flow.box.x0 - indent - hang - reserve - SLACK);
+    let n = 0,
+      at = from;
+    while (n < 2) {
+      const r = layoutNextRichInlineLineRange(prepared, width * MEASURE, at);
+      if (!r) break;
+      n++;
+      at = r.end;
+    }
+    return n;
+  };
   for (;;) {
     const lineFor = () => {
       const span = fixedSpan || flow.span(flow.y, flow.y + st.leading);
@@ -133,12 +151,39 @@ export function flowText(
     let { span, ind, range } = lineFor();
     if (!range) break;
     if (!flow.fits(st.leading)) {
+      const here = placed.filter((l) => l.page === flow.page).length;
+      const movable = !fixedSpan && blockStart.page === flow.page && blockStart.y > flow.box.top + 0.01;
+      const widow = !fixedSpan && linesLeft(cursor) === 1;
+      if (!fixedSpan && widow && here >= 3) {
+        // Widow: only the last line would go over; take one more line along.
+        const l = /** @type {any} */ (placed.pop());
+        flow.page.items.length = l.itemsBefore;
+        created = created.filter((it) => !l.items.includes(it));
+        cursor = l.cursor;
+        ln--;
+      } else if (movable && (here === 1 || widow)) {
+        // Orphan (only the first line would stay behind), or a short block
+        // that would leave a widow either way: move the whole block over.
+        flow.page.items.length = blockStart.items;
+        placed.length = 0;
+        created = [];
+        cursor = undefined;
+        first = true;
+        ln = 0;
+      }
       flow.newPage();
       ({ span, ind, range } = lineFor()); // re-flow this line at the new page's width
       if (!range) break;
     }
     const line = materializeRichInlineLineRange(prepared, range);
     const baseline = flow.y + baselineIn(st);
+    const lineRecord = {
+      page: flow.page,
+      itemsBefore: flow.page.items.length,
+      cursor,
+      items: /** @type {any[]} */ ([]),
+    };
+    placed.push(lineRecord);
     let x = span.x0 + ind;
     let cont = false;
     line.fragments.forEach((f, i, all) => {
@@ -162,9 +207,11 @@ export function flowText(
           gap,
           blk,
           ln,
+          role: st.role,
         };
         flow.add(item);
         created.push(item);
+        lineRecord.items.push(item);
       }
       cont = true;
       x += f.occupiedWidth / MEASURE;
