@@ -2,3 +2,4 @@
 node_modules/
 dist/
 .dev/
+e2e/visual/__diffs__/

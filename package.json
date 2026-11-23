@@ -10,6 +10,7 @@
     "dev": "node scripts/dev.mjs",
     "test": "node --test",
     "test:e2e": "node --test --test-concurrency=1 'e2e/*.e2e.js'",
+    "test:visual": "node --test e2e/visual.e2e.js",
     "test:coverage": "node --test --experimental-test-coverage",
     "lint": "eslint . && prettier --check . && tsc -p tsconfig.json",
     "format": "prettier --write .",

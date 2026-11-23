@@ -1,0 +1,89 @@
+name: Visual baselines
+
+# Run by hand (Actions → Visual baselines → Run workflow) after an intended
+# change to how pages look. Makes new screenshots for the visual regression
+# tests on CI's Linux runners in all three engines, pushes them to a branch,
+# and links a pull request to review them (the images show in the diff).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-baselines-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shoot:
+    name: Screenshots (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Chromium lays out the book; the engine under test draws it.
+      - run: npx playwright install --with-deps chromium ${{ matrix.browser }}
+      - name: Build (the browser helpers need a built site)
+        run: npm run build
+      - name: Make screenshots
+        run: |
+          rm -rf "e2e/visual/$BROWSER"
+          npm run test:visual
+        env:
+          BROWSER: ${{ matrix.browser }}
+          UPDATE_VISUAL: '1'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: visual-${{ matrix.browser }}
+          path: e2e/visual/${{ matrix.browser }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  branch:
+    name: Push for review
+    needs: [shoot]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: visual-*
+          path: new-baselines
+      - name: Commit the new screenshots to a branch
+        run: |
+          for dir in new-baselines/visual-*; do
+            engine="${dir##*/visual-}"
+            rm -rf "e2e/visual/$engine"
+            mkdir -p e2e/visual
+            mv "$dir" "e2e/visual/$engine"
+          done
+          if [ -z "$(git status --porcelain e2e/visual)" ]; then
+            echo "The screenshots match the current baselines; nothing to review." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch="visual-baselines/${GITHUB_RUN_ID}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add e2e/visual
+          git commit -m "Update visual baselines from ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          git push origin "$branch"
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${branch}?expand=1"
+          {
+            echo "New screenshots are on \`$branch\`."
+            echo
+            echo "**[Open a pull request to review them]($url)** — check each image before merging."
+          } >> "$GITHUB_STEP_SUMMARY"

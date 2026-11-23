@@ -4,14 +4,14 @@
 // Cloudflare would, so a Content-Security-Policy violation is a test failure.
 import * as playwright from 'playwright';
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { serve, ORIGIN } from '../scripts/lib/serve.mjs';
 
 export const REPO = new URL('../', import.meta.url).pathname;
 export const DIST = new URL('../dist/', import.meta.url).pathname;
-if (!existsSync(`${DIST}index.html`)) throw new Error('dist/ is missing: run `npm run build` before the browser tests');
 
-/** Header rules from dist/_headers (a trailing * matches any path under it). */
-const HEADER_RULES = readFileSync(`${DIST}_headers`, 'utf8')
+/** Header rules from the site's _headers (a trailing * matches any path under it). */
+const HEADER_RULES = readFileSync(new URL('../site/static/_headers', import.meta.url), 'utf8')
   .split('\n')
   .reduce((/** @type {{ path: string, headers: Record<string, string> }[]} */ rules, line) => {
     if (!line.trim() || line.trim().startsWith('#')) return rules;
@@ -46,14 +46,16 @@ export function phone() {
  * book is open. `errors` collects page errors, console errors (including CSP
  * violations) and failed requests; `requests` lists every URL fetched.
  */
-export async function openBook(contextOptions = {}, path = '/') {
+export async function openBook(contextOptions = {}, path = '/', { dist = DIST } = {}) {
+  if (!existsSync(join(dist, 'index.html')))
+    throw new Error(`${dist} is missing: run \`npm run build\` before the browser tests`);
   const browser = await playwright[BROWSER].launch();
   const context = await browser.newContext({
     viewport: { width: 1400, height: 960 },
     deviceScaleFactor: 1,
     ...contextOptions,
   });
-  await serve(context, { repo: REPO, dist: DIST, headers: headersFor });
+  await serve(context, { repo: REPO, dist, headers: headersFor });
   const page = await context.newPage();
   /** @type {string[]} */
   const errors = [];
