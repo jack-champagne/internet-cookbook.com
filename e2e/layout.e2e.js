@@ -169,3 +169,42 @@ test('edge cases: a long ingredient list, a tall image and a missing image', asy
     assert.ok(imgs[0].h <= area + 0.01 && imgs[0].y + imgs[0].h <= bottom + 0.5, `${edition}: tall image fits`);
   }
 });
+
+test('the published layout draws exactly like a live layout (frozen round trip)', async () => {
+  const dist = new URL('../dist/layout/', import.meta.url);
+  for (const edition of book.editions) {
+    const frozen = JSON.parse(await readFile(new URL(`${edition}.json`, dist), 'utf8'));
+    const r = await page.evaluate(
+      async ([b, e, frozen]) => {
+        const { drawPage } = await import('/src/render.js');
+        const { loadImages } = await import('/src/layout/text.js');
+        const { tpl, layout: live } = await window.layoutEdition(b, e);
+        const srcs = [
+          ...new Set(live.pages.flatMap((p) => p.items.filter((i) => i.type === 'image').map((i) => i.src))),
+        ];
+        const images = await loadImages(srcs);
+        const draw = (p, t) => {
+          const c = document.createElement('canvas');
+          c.width = tpl.page.width;
+          c.height = tpl.page.height;
+          const g = c.getContext('2d');
+          drawPage(g, p, t, { images });
+          return g.getImageData(0, 0, c.width, c.height).data;
+        };
+        const differing = [];
+        if (frozen.pages.length !== live.pages.length) return { count: [frozen.pages.length, live.pages.length] };
+        for (let i = 0; i < live.pages.length; i++) {
+          const a = draw(live.pages[i], tpl),
+            z = draw(frozen.pages[i], frozen.template);
+          if (a.some((v, k) => v !== z[k])) differing.push(i + 1);
+        }
+        return { differing, entries: JSON.stringify(live.entries) };
+      },
+      [book, edition, frozen],
+    );
+    assert.equal(r.count, undefined, `${edition}: page count differs (rebuild dist/)`);
+    assert.deepEqual(r.differing, [], `${edition}: pages drawn differently from the published layout`);
+    const entries = Object.fromEntries(Object.entries(frozen.entries).map(([a, { title: _t, ...e }]) => [a, e]));
+    assert.deepEqual(entries, JSON.parse(r.entries), `${edition}: page map`);
+  }
+});

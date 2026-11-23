@@ -3,11 +3,15 @@
 The Internet Cookbook includes the following third-party works. Each keeps its
 own licence, whose full text ships alongside it.
 
+Pretext and js-yaml are build tools: they typeset the book and read its files
+when the site is built, and are not part of the published site. The fonts are
+published with the site, each with its licence.
+
 ## Pretext 1.0.0 — text measurement and line layout
 
-- Location: `public/vendor/pretext/`
+- Location: `src/vendor/pretext/`
 - Licence: MIT, © 2026 Pretext contributors
-- Full text: [`public/vendor/pretext/LICENSE`](public/vendor/pretext/LICENSE)
+- Full text: [`src/vendor/pretext/LICENSE`](src/vendor/pretext/LICENSE)
 
 Pretext includes code and data ported from other projects, whose notices are
 reproduced in the same `LICENSE` file:
@@ -24,9 +28,9 @@ reproduced in the same `LICENSE` file:
 
 ## js-yaml 5.5.0 — YAML parsing for recipe headers
 
-- Location: `public/vendor/js-yaml/`
+- Location: `src/vendor/js-yaml/`
 - Licence: MIT, © 2011-2015 Vitaly Puzrin
-- Full text: [`public/vendor/js-yaml/LICENSE`](public/vendor/js-yaml/LICENSE)
+- Full text: [`src/vendor/js-yaml/LICENSE`](src/vendor/js-yaml/LICENSE)
 
 ## Fonts
 
@@ -35,9 +39,9 @@ License 1.1 with no Reserved Font Names; each licence ships next to the font.
 
 | Font | Copyright | Licence file |
 |---|---|---|
-| Cormorant Garamond | © 2015 the Cormorant Project Authors | [`public/fonts/OFL-cormorantgaramond.txt`](public/fonts/OFL-cormorantgaramond.txt) |
-| Crimson Pro | © 2018 The Crimson Pro Project Authors | [`public/fonts/OFL-crimsonpro.txt`](public/fonts/OFL-crimsonpro.txt) |
-| Caveat | © 2014 The Caveat Project Authors | [`public/fonts/OFL-caveat.txt`](public/fonts/OFL-caveat.txt) |
+| Cormorant Garamond | © 2015 the Cormorant Project Authors | [`books/internet-cookbook/fonts/OFL-cormorantgaramond.txt`](books/internet-cookbook/fonts/OFL-cormorantgaramond.txt) |
+| Crimson Pro | © 2018 The Crimson Pro Project Authors | [`books/internet-cookbook/fonts/OFL-crimsonpro.txt`](books/internet-cookbook/fonts/OFL-crimsonpro.txt) |
+| Caveat | © 2014 The Caveat Project Authors | [`books/internet-cookbook/fonts/OFL-caveat.txt`](books/internet-cookbook/fonts/OFL-caveat.txt) |
 
 The fonts may be used, bundled and redistributed with this project; they may
 not be sold on their own.
